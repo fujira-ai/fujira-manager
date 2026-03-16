@@ -1,0 +1,5 @@
+# Example cron entries (adjust PHP path to your server)
+# 0 8 * * * /usr/local/bin/php /home/your_user/www/fujira-manager/cron/push_morning_brief.php >> /home/your_user/www/fujira-manager/logs/cron.log 2>&1
+# 0 * * * * /usr/local/bin/php /home/your_user/www/fujira-manager/cron/push_due_tasks.php >> /home/your_user/www/fujira-manager/logs/cron.log 2>&1
+# 0 20 * * * /usr/local/bin/php /home/your_user/www/fujira-manager/cron/push_schedule_prep.php >> /home/your_user/www/fujira-manager/logs/cron.log 2>&1
+# 0 9 * * * /usr/local/bin/php /home/your_user/www/fujira-manager/cron/push_payment_alert.php >> /home/your_user/www/fujira-manager/logs/cron.log 2>&1

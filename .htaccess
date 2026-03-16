@@ -1,0 +1,6 @@
+Options -Indexes
+AddDefaultCharset UTF-8
+
+<FilesMatch "^(\.env|composer\.(json|lock)|README\.md)$">
+  Require all denied
+</FilesMatch>
