@@ -4,6 +4,25 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.4-task-pipeline-complete
+
+### Added
+- TaskRepository create() implementation
+- webhook integration for saving LINE text messages
+
+### Fixed
+- implemented UserRepository::create()
+- removed legacy owner_id from users schema
+
+### Changed
+- normalized owner_id to users.id (INT UNSIGNED)
+- rebuilt canonical schema.sql
+
+### Result
+- LINE message → user registration → task storage pipeline is fully functional
+
+---
+
 ## v0.4.3-schema-rebuild
 
 ### Changed
