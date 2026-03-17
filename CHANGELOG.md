@@ -4,6 +4,18 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.17-morning-brief-push
+
+### Added
+- `UserRepository::getAllUsers(): array`
+- `LineService::pushMessage(string $lineUserId, string $message): void`
+- `cron/push_morning_brief.php`
+
+### Result
+Users can now receive automatic morning brief messages via LINE Push
+
+---
+
 ## v0.16-brief-view
 
 ### Added
