@@ -509,18 +509,36 @@ foreach ($data['events'] as $event) {
     }
 
     if (!$isCommand && $ownerId !== null && $taskRepo !== null && $text !== '') {
-        // Parse due_date from "今日 XXX" or "明日 XXX"
-        $dueDate    = null;
-        $saveTitle  = $text;
-        $tz         = new DateTimeZone('Asia/Tokyo');
-        if (preg_match('/^今日[ 　]+(.+)$/u', $text, $dm)) {
+        // Detect prefix-only inputs with no content (e.g. "今日は", "明日の")
+        if (preg_match('/^(?:今日|明日)(?:[ 　]+|の|は)?[ 　]*$/u', $text)) {
+            webhook_log('task skipped: empty title after prefix strip', ['text' => $text, 'owner_id' => $ownerId]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, '内容を入力してください');
+            }
+            continue;
+        }
+
+        // Parse due_date from natural Japanese date prefixes
+        $dueDate   = null;
+        $saveTitle = $text;
+        $tz        = new DateTimeZone('Asia/Tokyo');
+
+        if (preg_match('/^今日(?:[ 　]+|の|は)(.+)$/u', $text, $dm)) {
             $saveTitle = trim($dm[1]);
             $dueDate   = (new DateTime('now', $tz))->format('Y-m-d');
-        } elseif (preg_match('/^明日[ 　]+(.+)$/u', $text, $dm)) {
+        } elseif (preg_match('/^明日(?:[ 　]+|の|は)(.+)$/u', $text, $dm)) {
             $saveTitle = trim($dm[1]);
             $d = new DateTime('now', $tz);
             $d->modify('+1 day');
             $dueDate = $d->format('Y-m-d');
+        }
+
+        if ($saveTitle === '') {
+            webhook_log('task skipped: empty title after prefix strip', ['text' => $text, 'owner_id' => $ownerId]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, '内容を入力してください');
+            }
+            continue;
         }
 
         try {

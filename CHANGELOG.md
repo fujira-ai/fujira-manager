@@ -4,6 +4,29 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.19.1-date-prefix-empty-guard
+
+### Fixed
+- date-prefix-only inputs such as `今日は`, `今日の`, `明日は`, `明日の` are now rejected safely
+
+### Result
+Prefix-only inputs no longer fall through to normal task creation
+
+---
+
+## v0.19-natural-date-prefix
+
+### Improved
+- due_date parsing now supports natural prefixes such as `今日の〜`, `今日は〜`, `明日の〜`, `明日は〜`
+
+### Fixed
+- empty titles after date-prefix input are rejected safely
+
+### Result
+Users can enter date-prefixed tasks in more natural Japanese
+
+---
+
 ## v0.18-brief-toggle
 
 ### Added
