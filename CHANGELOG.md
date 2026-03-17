@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.15-tomorrow-tasks
+
+### Added
+- LINE command `明日` / `/tomorrow`
+- `TaskRepository::getTomorrowTasksByOwner(int $ownerId, string $tomorrow): array`
+
+### Result
+Users can now view open tasks due tomorrow directly from LINE
+
+---
+
 ## v0.14-today-tasks
 
 ### Added

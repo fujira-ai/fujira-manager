@@ -430,6 +430,33 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
+    // Tomorrow command ("明日" alone — "明日 XXX" goes to task save)
+    if ($text === '明日' || $text === '/tomorrow') {
+        $replyText = '明日が期限のタスクはありません';
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $d = new DateTime('now', new DateTimeZone('Asia/Tokyo'));
+                $d->modify('+1 day');
+                $tomorrow      = $d->format('Y-m-d');
+                $tomorrowTasks = $taskRepo->getTomorrowTasksByOwner($ownerId, $tomorrow);
+                if (!empty($tomorrowTasks)) {
+                    $lines = ['明日のタスク:'];
+                    foreach ($tomorrowTasks as $i => $t) {
+                        $lines[] = ($i + 1) . '. ' . $t['title'];
+                    }
+                    $replyText = implode("\n", $lines);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('task tomorrow failed', ['error' => $e->getMessage()]);
+                $replyText = '明日のタスク取得に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
     // Today command ("今日" alone — "今日 XXX" goes to task save)
     if ($text === '今日' || $text === '/today') {
         $replyText = '今日が期限のタスクはありません';
@@ -462,6 +489,8 @@ foreach ($data['events'] as $event) {
         || $text === '/history'
         || $text === '今日'
         || $text === '/today'
+        || $text === '明日'
+        || $text === '/tomorrow'
         || $text === '/ping'
         || $text === '/brief'
         || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1
