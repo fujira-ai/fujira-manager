@@ -430,11 +430,38 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
+    // Today command ("今日" alone — "今日 XXX" goes to task save)
+    if ($text === '今日' || $text === '/today') {
+        $replyText = '今日が期限のタスクはありません';
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $today      = (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('Y-m-d');
+                $todayTasks = $taskRepo->getTodayTasksByOwner($ownerId, $today);
+                if (!empty($todayTasks)) {
+                    $lines = ['今日のタスク:'];
+                    foreach ($todayTasks as $i => $t) {
+                        $lines[] = ($i + 1) . '. ' . $t['title'];
+                    }
+                    $replyText = implode("\n", $lines);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('task today failed', ['error' => $e->getMessage()]);
+                $replyText = '今日のタスク取得に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
     // Save task
     $isCommand = ($text === '一覧'
         || $text === '/list'
         || $text === '履歴'
         || $text === '/history'
+        || $text === '今日'
+        || $text === '/today'
         || $text === '/ping'
         || $text === '/brief'
         || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1

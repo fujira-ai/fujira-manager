@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.14-today-tasks
+
+### Added
+- LINE command `今日` / `/today`
+- `TaskRepository::getTodayTasksByOwner(int $ownerId, string $today): array`
+
+### Result
+Users can now view open tasks due today directly from LINE
+
+---
+
 ## v0.13-task-due-date
 
 ### Added
