@@ -31,6 +31,11 @@ final class TaskRepository
         $stmt = $this->db->pdo()->prepare($updateSql);
         $stmt->execute(['status' => 'done', 'id' => $taskId, 'owner_id' => $ownerId, 'current_status' => 'open']);
 
+        // SELECT後でも並行更新等で更新件数が0になる場合は失敗扱い
+        if ($stmt->rowCount() === 0) {
+            return null;
+        }
+
         return $task;
     }
 
@@ -47,6 +52,11 @@ final class TaskRepository
         $deleteSql = 'DELETE FROM tasks WHERE id = :id AND owner_id = :owner_id AND status = :status';
         $stmt = $this->db->pdo()->prepare($deleteSql);
         $stmt->execute(['id' => $taskId, 'owner_id' => $ownerId, 'status' => 'open']);
+
+        // SELECT後でも並行更新等で削除件数が0になる場合は失敗扱い
+        if ($stmt->rowCount() === 0) {
+            return null;
+        }
 
         return $task;
     }

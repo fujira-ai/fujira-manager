@@ -258,6 +258,14 @@ foreach ($data['events'] as $event) {
         $num    = (int) $matches[1];
         $taskId = $num;
 
+        if ($num < 1) {
+            webhook_log('task command invalid', ['command' => 'complete', 'input' => $num, 'owner_id' => $ownerId]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, '番号の指定が不正です');
+            }
+            continue;
+        }
+
         // Resolve list number → task_id via conv_state
         if ($ownerId !== null && $convStateRepo !== null) {
             try {
@@ -269,7 +277,7 @@ foreach ($data['events'] as $event) {
                 }
                 webhook_log('resolved taskId', ['input' => $num, 'resolved' => $taskId]);
             } catch (\Throwable $e) {
-                webhook_log('conv_state get failed', ['error' => $e->getMessage()]);
+                webhook_log('task command resolve failed', ['command' => 'complete', 'input' => $num, 'owner_id' => $ownerId, 'error' => $e->getMessage()]);
             }
         }
 
@@ -282,7 +290,7 @@ foreach ($data['events'] as $event) {
                     webhook_log('task completed', ['owner_id' => $ownerId, 'task_id' => $taskId]);
                 }
             } catch (\Throwable $e) {
-                webhook_log('task complete failed', ['error' => $e->getMessage()]);
+                webhook_log('task complete failed', ['owner_id' => $ownerId, 'input' => $num, 'task_id' => $taskId, 'error' => $e->getMessage()]);
                 $replyText = 'タスク完了処理に失敗しました';
             }
         }
@@ -297,16 +305,26 @@ foreach ($data['events'] as $event) {
         $num    = (int) $matches[1];
         $taskId = $num;
 
+        if ($num < 1) {
+            webhook_log('task command invalid', ['command' => 'delete', 'input' => $num, 'owner_id' => $ownerId]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, '番号の指定が不正です');
+            }
+            continue;
+        }
+
         // Resolve list number → task_id via conv_state
         if ($ownerId !== null && $convStateRepo !== null) {
             try {
                 $state = $convStateRepo->getState($ownerId);
+                webhook_log('state loaded', ['owner_id' => $ownerId, 'state' => $state]);
                 $map   = $state['last_task_list_map'] ?? [];
                 if (isset($map[(string)$num])) {
                     $taskId = (int) $map[(string)$num];
                 }
+                webhook_log('resolved taskId', ['input' => $num, 'resolved' => $taskId]);
             } catch (\Throwable $e) {
-                webhook_log('conv_state get failed', ['error' => $e->getMessage()]);
+                webhook_log('task command resolve failed', ['command' => 'delete', 'input' => $num, 'owner_id' => $ownerId, 'error' => $e->getMessage()]);
             }
         }
 
@@ -319,7 +337,7 @@ foreach ($data['events'] as $event) {
                     webhook_log('task deleted', ['owner_id' => $ownerId, 'task_id' => $taskId]);
                 }
             } catch (\Throwable $e) {
-                webhook_log('task delete failed', ['error' => $e->getMessage()]);
+                webhook_log('task delete failed', ['owner_id' => $ownerId, 'input' => $num, 'task_id' => $taskId, 'error' => $e->getMessage()]);
                 $replyText = 'タスク削除処理に失敗しました';
             }
         }

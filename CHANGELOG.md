@@ -4,6 +4,33 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.10-stability-hardening
+
+### Improved
+- stronger validation for task completion and deletion commands
+- repository update/delete operations now verify affected rows
+- failure logging improved for command resolution and DB operations
+
+### Result
+Task operations are now safer and easier to debug without changing user-facing behavior
+
+---
+
+## [v0.9]
+
+### Changed
+- webhook: 一覧表示を「open タスクのみ」に統一
+- webhook: 一覧0件時の文言を「現在 open のタスクはありません」に変更
+
+### Confirmed
+- TaskRepository::getOpenTasksByOwner() が status='open' で正しく絞り込みされていることを確認
+- last_task_list_map が open タスクのみを対象に構築されていることを確認
+
+### UX
+- 一覧 / 完了 / 削除 の対象が完全一致するようになり、操作の直感性を改善
+
+---
+
 ## v0.8-task-delete
 
 ### Added
