@@ -493,6 +493,7 @@ foreach ($data['events'] as $event) {
         || $text === '/tomorrow'
         || $text === '/ping'
         || $text === '/brief'
+        || $text === 'ブリーフ'
         || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1
         || preg_match('/^(?:削除|\/delete|\/del)\s+\d+$/', $text) === 1
         || preg_match('/^(?:戻す|\/undo)\s+\d+$/', $text) === 1);
@@ -536,8 +537,42 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
-    if ($text === '/brief') {
-        line_reply($replyToken, "これはテスト版 brief です。\nFujira Manager は正常に動作しています。");
+    if ($text === '/brief' || $text === 'ブリーフ') {
+        $replyText = "【今日のブリーフ】\n\n今日やるべきタスクはありません";
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $today      = (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('Y-m-d');
+                $todayTasks = $taskRepo->getTodayTasksByOwner($ownerId, $today);
+                $noneTasks  = $taskRepo->getNoDueDateTasksByOwner($ownerId);
+
+                if (!empty($todayTasks) || !empty($noneTasks)) {
+                    $sections = ["【今日のブリーフ】"];
+                    $counter  = 1;
+
+                    if (!empty($todayTasks)) {
+                        $sections[] = "\n■ 今日の期限";
+                        foreach ($todayTasks as $t) {
+                            $sections[] = $counter++ . '. ' . $t['title'];
+                        }
+                    }
+
+                    if (!empty($noneTasks)) {
+                        $sections[] = "\n■ その他（未期限）";
+                        foreach ($noneTasks as $t) {
+                            $sections[] = $counter++ . '. ' . $t['title'];
+                        }
+                    }
+
+                    $replyText = implode("\n", $sections);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('brief failed', ['error' => $e->getMessage()]);
+                $replyText = 'ブリーフ取得に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
         continue;
     }
 

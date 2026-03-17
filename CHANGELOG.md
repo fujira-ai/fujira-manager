@@ -4,6 +4,21 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.16-brief-view
+
+### Added
+- TaskRepository: `getNoDueDateTasksByOwner(int $ownerId): array`
+- webhook: `/brief` / `ブリーフ` で今日の期限タスク＋未期限タスクをまとめて表示する brief 機能を追加
+
+### Changed
+- webhook: `/brief` のテスト用スタブを本実装に置き換え
+- webhook: isCommand に `ブリーフ` を追加
+
+### Result
+Users can now review a compact daily brief from LINE
+
+---
+
 ## v0.13.1-due-date-space-fix
 
 ### Fixed
