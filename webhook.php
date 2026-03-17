@@ -216,7 +216,7 @@ foreach ($data['events'] as $event) {
 
     // Task list command
     if ($text === '一覧' || $text === '/list') {
-        $replyText = 'タスクはありません';
+        $replyText = '現在 open のタスクはありません';
         if ($ownerId !== null && $taskRepo !== null) {
             try {
                 $tasks = $taskRepo->getOpenTasksByOwner($ownerId);
