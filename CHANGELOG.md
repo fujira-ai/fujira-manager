@@ -4,6 +4,16 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.13.1-due-date-space-fix
+
+### Fixed
+- `今日 XXX` / `明日 XXX` due_date parsing now supports full-width spaces
+
+### Result
+Tasks entered with Japanese full-width spacing can now be saved with due_date correctly
+
+---
+
 ## v0.15-tomorrow-tasks
 
 ### Added

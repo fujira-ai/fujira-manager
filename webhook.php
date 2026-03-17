@@ -508,10 +508,10 @@ foreach ($data['events'] as $event) {
         $dueDate    = null;
         $saveTitle  = $text;
         $tz         = new DateTimeZone('Asia/Tokyo');
-        if (preg_match('/^今日\s+(.+)$/', $text, $dm)) {
+        if (preg_match('/^今日[ 　]+(.+)$/u', $text, $dm)) {
             $saveTitle = trim($dm[1]);
             $dueDate   = (new DateTime('now', $tz))->format('Y-m-d');
-        } elseif (preg_match('/^明日\s+(.+)$/', $text, $dm)) {
+        } elseif (preg_match('/^明日[ 　]+(.+)$/u', $text, $dm)) {
             $saveTitle = trim($dm[1]);
             $d = new DateTime('now', $tz);
             $d->modify('+1 day');
