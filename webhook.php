@@ -212,6 +212,27 @@ foreach ($data['events'] as $event) {
         }
     }
 
+    // Task list command
+    if ($text === '一覧' || $text === '/list') {
+        $replyText = 'タスクはありません';
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $tasks = $taskRepo->getOpenTasksByOwner($ownerId);
+                if (!empty($tasks)) {
+                    $lines = array_map(fn($t) => '・' . $t['title'], $tasks);
+                    $replyText = implode("\n", $lines);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('task list failed', ['error' => $e->getMessage()]);
+                $replyText = 'タスク取得に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
     // Save task
     webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text]);
 

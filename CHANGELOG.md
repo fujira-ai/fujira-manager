@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.5-task-list
+
+### Added
+- LINE command `一覧` / `/list` for open task listing
+- `TaskRepository::getOpenTasksByOwner(int $ownerId): array`
+
+### Result
+Users can now review their current open tasks from LINE
+
+---
+
 ## v0.4-task-pipeline-complete
 
 ### Added
