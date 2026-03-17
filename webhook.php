@@ -221,15 +221,74 @@ foreach ($data['events'] as $event) {
             try {
                 $doneTasks = $taskRepo->getDoneTasksByOwner($ownerId);
                 if (!empty($doneTasks)) {
-                    $lines = ['完了済みタスク:'];
+                    $doneMap = [];
+                    $lines   = ['完了済みタスク:'];
                     foreach ($doneTasks as $i => $t) {
-                        $lines[] = ($i + 1) . '. ' . $t['title'];
+                        $num           = $i + 1;
+                        $doneMap[(string)$num] = (int)$t['id'];
+                        $lines[]       = $num . '. ' . $t['title'];
                     }
                     $replyText = implode("\n", $lines);
+
+                    if ($convStateRepo !== null) {
+                        try {
+                            $state = $convStateRepo->getState($ownerId);
+                            $state['last_done_task_list_map'] = $doneMap;
+                            $convStateRepo->saveState($ownerId, $state);
+                        } catch (\Throwable $e) {
+                            webhook_log('conv_state save failed', ['error' => $e->getMessage()]);
+                        }
+                    }
                 }
             } catch (\Throwable $e) {
                 webhook_log('task history failed', ['error' => $e->getMessage()]);
                 $replyText = '履歴取得に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
+    // Undo command
+    if (preg_match('/^(?:戻す|\/undo)\s+(\d+)$/', $text, $matches)) {
+        $num    = (int) $matches[1];
+        $taskId = $num;
+
+        if ($num < 1) {
+            webhook_log('task command invalid', ['command' => 'undo', 'input' => $num, 'owner_id' => $ownerId]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, '番号の指定が不正です');
+            }
+            continue;
+        }
+
+        // Resolve done list number → task_id via conv_state
+        if ($ownerId !== null && $convStateRepo !== null) {
+            try {
+                $state   = $convStateRepo->getState($ownerId);
+                $doneMap = $state['last_done_task_list_map'] ?? [];
+                if (isset($doneMap[(string)$num])) {
+                    $taskId = (int) $doneMap[(string)$num];
+                }
+                webhook_log('resolved taskId', ['command' => 'undo', 'input' => $num, 'resolved' => $taskId]);
+            } catch (\Throwable $e) {
+                webhook_log('task command resolve failed', ['command' => 'undo', 'input' => $num, 'owner_id' => $ownerId, 'error' => $e->getMessage()]);
+            }
+        }
+
+        $replyText = '該当する完了済みタスクが見つかりません';
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $reopened = $taskRepo->reopenTaskById($ownerId, $taskId);
+                if ($reopened !== null) {
+                    $replyText = "未完了に戻しました:\n・" . $reopened['title'];
+                    webhook_log('task reopened', ['owner_id' => $ownerId, 'task_id' => $taskId]);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('task undo failed', ['owner_id' => $ownerId, 'input' => $num, 'task_id' => $taskId, 'error' => $e->getMessage()]);
+                $replyText = 'タスク取り消し処理に失敗しました';
             }
         }
         if ($replyToken !== '') {
@@ -379,7 +438,8 @@ foreach ($data['events'] as $event) {
         || $text === '/ping'
         || $text === '/brief'
         || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1
-        || preg_match('/^(?:削除|\/delete|\/del)\s+\d+$/', $text) === 1);
+        || preg_match('/^(?:削除|\/delete|\/del)\s+\d+$/', $text) === 1
+        || preg_match('/^(?:戻す|\/undo)\s+\d+$/', $text) === 1);
 
     webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text, 'is_command' => $isCommand]);
 

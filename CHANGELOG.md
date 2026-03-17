@@ -4,6 +4,18 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.12-task-undo
+
+### Added
+- LINE command `戻す {n}` / `/undo {n}`
+- `TaskRepository::reopenTaskById(int $ownerId, int $taskId): ?array`
+- `last_done_task_list_map` storage in conv_state for history-based undo
+
+### Result
+Users can restore completed tasks back to open state from history
+
+---
+
 ## v0.11-task-history
 
 ### Added

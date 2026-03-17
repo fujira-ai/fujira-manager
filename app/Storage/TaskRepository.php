@@ -61,6 +61,28 @@ final class TaskRepository
         return $task;
     }
 
+    public function reopenTaskById(int $ownerId, int $taskId): ?array
+    {
+        $selectSql = 'SELECT id, title FROM tasks WHERE id = :id AND owner_id = :owner_id AND status = :status LIMIT 1';
+        $stmt = $this->db->pdo()->prepare($selectSql);
+        $stmt->execute(['id' => $taskId, 'owner_id' => $ownerId, 'status' => 'done']);
+        $task = $stmt->fetch();
+        if ($task === false) {
+            return null;
+        }
+
+        $updateSql = 'UPDATE tasks SET status = :status, completed_at = NULL, updated_at = NOW() WHERE id = :id AND owner_id = :owner_id AND status = :current_status';
+        $stmt = $this->db->pdo()->prepare($updateSql);
+        $stmt->execute(['status' => 'open', 'id' => $taskId, 'owner_id' => $ownerId, 'current_status' => 'done']);
+
+        // SELECT後でも並行更新等で更新件数が0になる場合は失敗扱い
+        if ($stmt->rowCount() === 0) {
+            return null;
+        }
+
+        return $task;
+    }
+
     public function getDoneTasksByOwner(int $ownerId): array
     {
         $sql = 'SELECT id, title, completed_at FROM tasks WHERE owner_id = :owner_id AND status = :status ORDER BY completed_at DESC, id DESC LIMIT 10';
