@@ -35,17 +35,15 @@ Numbered task list state can now be stored reliably in `conv_state`, improving `
 ### Added
 - numbered task list output
 - number-to-task-id mapping stored in conv_state
-- `完了 {n}` / `/done {n}` can resolve visible list numbers
-
-### Changed
-- `ConvStateRepository::getState()` returns `[]` when no state exists
-- completion command parsing simplified to a single numeric capture
+- `完了 {n}` / `/done {n}` resolves list numbers
 
 ### Fixed
-- command messages are excluded from task storage
+- conv_state save logic stabilized
+- added debug logs for state save/load and task resolution
+- command messages excluded from task storage
 
 ### Result
-Users can complete tasks naturally from LINE after viewing the numbered task list
+Users can complete tasks naturally from LINE after viewing task list
 
 ---
 
