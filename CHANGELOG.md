@@ -10,6 +10,9 @@ All notable changes to Fujira Manager will be documented in this file.
 - `tasks.due_time` column
 - minimal time parsing for inputs such as `23時`, `23時半`, `13:30`
 
+### Fixed
+- titles are normalized after time extraction to avoid unnatural leading particles
+
 ### Result
 Users can now create tasks with lightweight due-time information while staying in the task model
 

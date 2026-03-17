@@ -538,13 +538,13 @@ foreach ($data['events'] as $event) {
         if ($dueDate !== null && $saveTitle !== '') {
             if (preg_match('/^(\d{1,2}:\d{2})[ 　]*(.*)$/u', $saveTitle, $tm)) {
                 $dueTime   = $tm[1];
-                $saveTitle = trim($tm[2]);
+                $saveTitle = trim(preg_replace('/^に/u', '', $tm[2]));
             } elseif (preg_match('/^(\d{1,2}時半)[ 　]*(.*)$/u', $saveTitle, $tm)) {
                 $dueTime   = $tm[1];
-                $saveTitle = trim(ltrim($tm[2], 'に'));
+                $saveTitle = trim(preg_replace('/^に/u', '', $tm[2]));
             } elseif (preg_match('/^(\d{1,2}時)[ 　]*(.*)$/u', $saveTitle, $tm)) {
                 $dueTime   = $tm[1];
-                $saveTitle = trim(ltrim($tm[2], 'に'));
+                $saveTitle = trim(preg_replace('/^に/u', '', $tm[2]));
             }
         }
 
