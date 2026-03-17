@@ -7,14 +7,17 @@ All notable changes to Fujira Manager will be documented in this file.
 ## v0.8-task-delete
 
 ### Added
-- LINE command `削除 {n}` / `/delete {n}` / `/del {n}` for deleting open tasks
+- LINE command `削除 {n}` / `/delete {n}` for deleting open tasks
 - `TaskRepository::deleteOpenTaskById(int $ownerId, int $taskId): ?array`
 
-### Changed
+### Fixed
 - delete commands are excluded from task storage
 
-### Dev Notes
-- added reusable SQL reset strategy for development data initialization
+### Improved
+- task deletion now respects open status only
+
+### Result
+Users can remove unnecessary open tasks directly from LINE
 
 ---
 

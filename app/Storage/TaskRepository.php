@@ -34,6 +34,23 @@ final class TaskRepository
         return $task;
     }
 
+    public function deleteOpenTaskById(int $ownerId, int $taskId): ?array
+    {
+        $selectSql = 'SELECT id, title FROM tasks WHERE id = :id AND owner_id = :owner_id AND status = :status LIMIT 1';
+        $stmt = $this->db->pdo()->prepare($selectSql);
+        $stmt->execute(['id' => $taskId, 'owner_id' => $ownerId, 'status' => 'open']);
+        $task = $stmt->fetch();
+        if ($task === false) {
+            return null;
+        }
+
+        $deleteSql = 'DELETE FROM tasks WHERE id = :id AND owner_id = :owner_id AND status = :status';
+        $stmt = $this->db->pdo()->prepare($deleteSql);
+        $stmt->execute(['id' => $taskId, 'owner_id' => $ownerId, 'status' => 'open']);
+
+        return $task;
+    }
+
     public function create(int $ownerId, string $title): int
     {
         $sql = 'INSERT INTO tasks (owner_id, title, status, source) VALUES (:owner_id, :title, :status, :source)';
