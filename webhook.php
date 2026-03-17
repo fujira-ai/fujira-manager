@@ -1,9 +1,7 @@
 <?php
 declare(strict_types=1);
 
-$config = require __DIR__ . '/app/config.php';
-
-date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tokyo');
+require __DIR__ . '/app/bootstrap.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -149,6 +147,19 @@ webhook_log('Webhook received', ['events_count' => count($data['events'])]);
 
 /*
 |--------------------------------------------------------------------------
+| Storage initialization
+|--------------------------------------------------------------------------
+*/
+$userRepo = null;
+try {
+    $db       = new \FujiraManager\Storage\Database($config['db']);
+    $userRepo = new \FujiraManager\Storage\UserRepository($db);
+} catch (\Throwable $e) {
+    webhook_log('DB init failed', ['error' => $e->getMessage()]);
+}
+
+/*
+|--------------------------------------------------------------------------
 | Handle events
 |--------------------------------------------------------------------------
 */
@@ -181,6 +192,23 @@ foreach ($data['events'] as $event) {
         'user_id' => $lineUserId,
         'text' => $text,
     ]);
+
+    // Auto-register user and resolve owner_id
+    $ownerId = null;
+    if ($lineUserId !== '' && $userRepo !== null) {
+        try {
+            $user = $userRepo->findByLineUserId($lineUserId);
+            if ($user === null) {
+                $ownerId = $userRepo->create($lineUserId);
+                webhook_log('user created', ['line_user_id' => $lineUserId, 'owner_id' => $ownerId]);
+            } else {
+                $ownerId = (int) $user['id'];
+                webhook_log('user exists', ['line_user_id' => $lineUserId, 'owner_id' => $ownerId]);
+            }
+        } catch (\Throwable $e) {
+            webhook_log('user registration failed', ['error' => $e->getMessage()]);
+        }
+    }
 
     if ($replyToken === '') {
         continue;
