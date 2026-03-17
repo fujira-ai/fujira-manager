@@ -151,9 +151,11 @@ webhook_log('Webhook received', ['events_count' => count($data['events'])]);
 |--------------------------------------------------------------------------
 */
 $userRepo = null;
+$taskRepo = null;
 try {
     $db       = new \FujiraManager\Storage\Database($config['db']);
     $userRepo = new \FujiraManager\Storage\UserRepository($db);
+    $taskRepo = new \FujiraManager\Storage\TaskRepository($db);
 } catch (\Throwable $e) {
     webhook_log('DB init failed', ['error' => $e->getMessage()]);
 }
@@ -207,6 +209,22 @@ foreach ($data['events'] as $event) {
             }
         } catch (\Throwable $e) {
             webhook_log('user registration failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    // Save task
+    webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text]);
+
+    if ($ownerId === null) {
+        webhook_log('task skipped: owner_id is null', ['line_user_id' => $lineUserId]);
+    }
+
+    if ($ownerId !== null && $taskRepo !== null && $text !== '') {
+        try {
+            $taskId = $taskRepo->create($ownerId, $text);
+            webhook_log('task created', ['owner_id' => $ownerId, 'title' => $text, 'task_id' => $taskId]);
+        } catch (\Throwable $e) {
+            webhook_log('task create failed', ['error' => $e->getMessage()]);
         }
     }
 

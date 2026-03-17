@@ -4,6 +4,57 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.4.3-schema-rebuild
+
+### Changed
+- rebuilt canonical `schema.sql` from scratch
+
+### Design
+- `users.id` is the internal owner_id
+- all owner-scoped tables now use `owner_id INT UNSIGNED`
+- existing `tasks` structure is preserved
+
+### Result
+- database structure is now aligned with current Fujira Manager architecture
+
+---
+
+## v0.4.2-users-schema-fix
+
+### Fixed
+- removed legacy `owner_id` design from `users` table
+- standardized internal owner model around `users.id`
+
+### Result
+- `users.id` is now the single internal owner_id
+- `line_user_id` remains the external LINE identifier
+
+---
+
+## v0.4.1-user-registration-fix
+
+### Fixed
+- implemented missing `UserRepository::create()`
+
+### Result
+- LINE users can now be auto-registered correctly
+- owner_id resolution can proceed through `users.id`
+
+---
+
+## v0.4-task-storage
+
+### Added
+- tasks table
+- TaskRepository (create)
+- webhook integration for saving tasks
+
+### Result
+- LINE messages are now persisted as tasks
+- first functional step toward AI secretary
+
+---
+
 ## v0.3-user-foundation
 
 ### Added
