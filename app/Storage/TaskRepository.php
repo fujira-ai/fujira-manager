@@ -61,6 +61,14 @@ final class TaskRepository
         return $task;
     }
 
+    public function getDoneTasksByOwner(int $ownerId): array
+    {
+        $sql = 'SELECT id, title, completed_at FROM tasks WHERE owner_id = :owner_id AND status = :status ORDER BY completed_at DESC, id DESC LIMIT 10';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute(['owner_id' => $ownerId, 'status' => 'done']);
+        return $stmt->fetchAll();
+    }
+
     public function create(int $ownerId, string $title): int
     {
         $sql = 'INSERT INTO tasks (owner_id, title, status, source) VALUES (:owner_id, :title, :status, :source)';

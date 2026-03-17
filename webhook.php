@@ -214,6 +214,30 @@ foreach ($data['events'] as $event) {
         }
     }
 
+    // History command
+    if ($text === '履歴' || $text === '/history') {
+        $replyText = '完了済みタスクはありません';
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $doneTasks = $taskRepo->getDoneTasksByOwner($ownerId);
+                if (!empty($doneTasks)) {
+                    $lines = ['完了済みタスク:'];
+                    foreach ($doneTasks as $i => $t) {
+                        $lines[] = ($i + 1) . '. ' . $t['title'];
+                    }
+                    $replyText = implode("\n", $lines);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('task history failed', ['error' => $e->getMessage()]);
+                $replyText = '履歴取得に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
     // Task list command
     if ($text === '一覧' || $text === '/list') {
         $replyText = '現在 open のタスクはありません';
@@ -350,6 +374,8 @@ foreach ($data['events'] as $event) {
     // Save task
     $isCommand = ($text === '一覧'
         || $text === '/list'
+        || $text === '履歴'
+        || $text === '/history'
         || $text === '/ping'
         || $text === '/brief'
         || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1

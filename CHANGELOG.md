@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.11-task-history
+
+### Added
+- LINE command `履歴` / `/history`
+- `TaskRepository::getDoneTasksByOwner(int $ownerId): array`
+
+### Result
+Users can now review recently completed tasks from LINE
+
+---
+
 ## v0.10-stability-hardening
 
 ### Improved
