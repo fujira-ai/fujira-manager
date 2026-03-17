@@ -4,6 +4,25 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.7-list-number-complete
+
+### Added
+- numbered task list output
+- number-to-task-id mapping stored in conv_state
+- `完了 {n}` / `/done {n}` can resolve visible list numbers
+
+### Changed
+- `ConvStateRepository::getState()` returns `[]` when no state exists
+- completion command parsing simplified to a single numeric capture
+
+### Fixed
+- command messages are excluded from task storage
+
+### Result
+Users can complete tasks naturally from LINE after viewing the numbered task list
+
+---
+
 ## v0.6-task-complete
 
 ### Added

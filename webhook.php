@@ -150,12 +150,14 @@ webhook_log('Webhook received', ['events_count' => count($data['events'])]);
 | Storage initialization
 |--------------------------------------------------------------------------
 */
-$userRepo = null;
-$taskRepo = null;
+$userRepo      = null;
+$taskRepo      = null;
+$convStateRepo = null;
 try {
-    $db       = new \FujiraManager\Storage\Database($config['db']);
-    $userRepo = new \FujiraManager\Storage\UserRepository($db);
-    $taskRepo = new \FujiraManager\Storage\TaskRepository($db);
+    $db            = new \FujiraManager\Storage\Database($config['db']);
+    $userRepo      = new \FujiraManager\Storage\UserRepository($db);
+    $taskRepo      = new \FujiraManager\Storage\TaskRepository($db);
+    $convStateRepo = new \FujiraManager\Storage\ConvStateRepository($db);
 } catch (\Throwable $e) {
     webhook_log('DB init failed', ['error' => $e->getMessage()]);
 }
@@ -219,8 +221,24 @@ foreach ($data['events'] as $event) {
             try {
                 $tasks = $taskRepo->getOpenTasksByOwner($ownerId);
                 if (!empty($tasks)) {
-                    $lines = array_map(fn($t) => '・' . $t['title'], $tasks);
+                    $map   = [];
+                    $lines = ['現在のタスク:'];
+                    foreach ($tasks as $i => $t) {
+                        $num        = $i + 1;
+                        $map[(string)$num] = (int)$t['id'];
+                        $lines[]    = $num . '. ' . $t['title'];
+                    }
                     $replyText = implode("\n", $lines);
+
+                    if ($convStateRepo !== null) {
+                        try {
+                            $state = $convStateRepo->getState($ownerId);
+                            $state['last_task_list_map'] = $map;
+                            $convStateRepo->saveState($ownerId, $state);
+                        } catch (\Throwable $e) {
+                            webhook_log('conv_state save failed', ['error' => $e->getMessage()]);
+                        }
+                    }
                 }
             } catch (\Throwable $e) {
                 webhook_log('task list failed', ['error' => $e->getMessage()]);
@@ -234,8 +252,23 @@ foreach ($data['events'] as $event) {
     }
 
     // Task complete command
-    if (preg_match('/^完了\s+(\d+)$|^\/done\s+(\d+)$/', $text, $matches)) {
-        $taskId = (int) ($matches[1] !== '' ? $matches[1] : $matches[2]);
+    if (preg_match('/^(?:完了|\/done)\s+(\d+)$/', $text, $matches)) {
+        $num    = (int) $matches[1];
+        $taskId = $num;
+
+        // Resolve list number → task_id via conv_state
+        if ($ownerId !== null && $convStateRepo !== null) {
+            try {
+                $state = $convStateRepo->getState($ownerId);
+                $map   = $state['last_task_list_map'] ?? [];
+                if (isset($map[(string)$num])) {
+                    $taskId = (int) $map[(string)$num];
+                }
+            } catch (\Throwable $e) {
+                webhook_log('conv_state get failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         $replyText = '該当する open task が見つかりません';
         if ($ownerId !== null && $taskRepo !== null) {
             try {
@@ -256,13 +289,19 @@ foreach ($data['events'] as $event) {
     }
 
     // Save task
-    webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text]);
+    $isCommand = ($text === '一覧'
+        || $text === '/list'
+        || $text === '/ping'
+        || $text === '/brief'
+        || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1);
+
+    webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text, 'is_command' => $isCommand]);
 
     if ($ownerId === null) {
         webhook_log('task skipped: owner_id is null', ['line_user_id' => $lineUserId]);
     }
 
-    if ($ownerId !== null && $taskRepo !== null && $text !== '') {
+    if (!$isCommand && $ownerId !== null && $taskRepo !== null && $text !== '') {
         try {
             $taskId = $taskRepo->create($ownerId, $text);
             webhook_log('task created', ['owner_id' => $ownerId, 'title' => $text, 'task_id' => $taskId]);
