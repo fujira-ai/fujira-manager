@@ -231,10 +231,12 @@ foreach ($data['events'] as $event) {
                     $replyText = implode("\n", $lines);
 
                     if ($convStateRepo !== null) {
+                        webhook_log('list map save attempt', ['owner_id' => $ownerId, 'map' => $map]);
                         try {
                             $state = $convStateRepo->getState($ownerId);
                             $state['last_task_list_map'] = $map;
                             $convStateRepo->saveState($ownerId, $state);
+                            webhook_log('list map save result', ['owner_id' => $ownerId, 'saved' => true]);
                         } catch (\Throwable $e) {
                             webhook_log('conv_state save failed', ['error' => $e->getMessage()]);
                         }
@@ -260,10 +262,12 @@ foreach ($data['events'] as $event) {
         if ($ownerId !== null && $convStateRepo !== null) {
             try {
                 $state = $convStateRepo->getState($ownerId);
+                webhook_log('state loaded', ['owner_id' => $ownerId, 'state' => $state]);
                 $map   = $state['last_task_list_map'] ?? [];
                 if (isset($map[(string)$num])) {
                     $taskId = (int) $map[(string)$num];
                 }
+                webhook_log('resolved taskId', ['input' => $num, 'resolved' => $taskId]);
             } catch (\Throwable $e) {
                 webhook_log('conv_state get failed', ['error' => $e->getMessage()]);
             }
@@ -288,12 +292,50 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
+    // Task delete command
+    if (preg_match('/^(?:削除|\/delete|\/del)\s+(\d+)$/', $text, $matches)) {
+        $num    = (int) $matches[1];
+        $taskId = $num;
+
+        // Resolve list number → task_id via conv_state
+        if ($ownerId !== null && $convStateRepo !== null) {
+            try {
+                $state = $convStateRepo->getState($ownerId);
+                $map   = $state['last_task_list_map'] ?? [];
+                if (isset($map[(string)$num])) {
+                    $taskId = (int) $map[(string)$num];
+                }
+            } catch (\Throwable $e) {
+                webhook_log('conv_state get failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        $replyText = '該当する open task が見つかりません';
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $deleted = $taskRepo->deleteOpenTaskById($ownerId, $taskId);
+                if ($deleted !== null) {
+                    $replyText = "削除しました:\n・" . $deleted['title'];
+                    webhook_log('task deleted', ['owner_id' => $ownerId, 'task_id' => $taskId]);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('task delete failed', ['error' => $e->getMessage()]);
+                $replyText = 'タスク削除処理に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
     // Save task
     $isCommand = ($text === '一覧'
         || $text === '/list'
         || $text === '/ping'
         || $text === '/brief'
-        || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1);
+        || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1
+        || preg_match('/^(?:削除|\/delete|\/del)\s+\d+$/', $text) === 1);
 
     webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text, 'is_command' => $isCommand]);
 

@@ -22,12 +22,19 @@ final class ConvStateRepository
 
     public function saveState(int $ownerId, array $state): void
     {
-        $sql = 'INSERT INTO conv_state (owner_id, state_json) VALUES (:owner_id, :state_json)
-                ON DUPLICATE KEY UPDATE state_json = VALUES(state_json)';
+        $json = json_encode($state, JSON_UNESCAPED_UNICODE);
+
+        $checkSql = 'SELECT COUNT(*) FROM conv_state WHERE owner_id = :owner_id';
+        $stmt = $this->db->pdo()->prepare($checkSql);
+        $stmt->execute(['owner_id' => $ownerId]);
+        $exists = (int) $stmt->fetchColumn() > 0;
+
+        if ($exists) {
+            $sql  = 'UPDATE conv_state SET state_json = :state_json WHERE owner_id = :owner_id';
+        } else {
+            $sql  = 'INSERT INTO conv_state (owner_id, state_json) VALUES (:owner_id, :state_json)';
+        }
         $stmt = $this->db->pdo()->prepare($sql);
-        $stmt->execute([
-            'owner_id'   => $ownerId,
-            'state_json' => json_encode($state, JSON_UNESCAPED_UNICODE),
-        ]);
+        $stmt->execute(['owner_id' => $ownerId, 'state_json' => $json]);
     }
 }
