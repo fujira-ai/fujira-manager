@@ -494,6 +494,10 @@ foreach ($data['events'] as $event) {
         || $text === '/ping'
         || $text === '/brief'
         || $text === 'ブリーフ'
+        || $text === 'brief on'
+        || $text === 'ブリーフオン'
+        || $text === 'brief off'
+        || $text === 'ブリーフオフ'
         || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1
         || preg_match('/^(?:削除|\/delete|\/del)\s+\d+$/', $text) === 1
         || preg_match('/^(?:戻す|\/undo)\s+\d+$/', $text) === 1);
@@ -534,6 +538,40 @@ foreach ($data['events'] as $event) {
     // simple test responses
     if ($text === '/ping') {
         line_reply($replyToken, 'pong');
+        continue;
+    }
+
+    if ($text === 'brief on' || $text === 'ブリーフオン') {
+        $replyText = '朝ブリーフを有効にしました';
+        if ($ownerId !== null && $userRepo !== null) {
+            try {
+                $userRepo->updateBriefEnabled($ownerId, 1);
+                webhook_log('brief enabled', ['owner_id' => $ownerId]);
+            } catch (\Throwable $e) {
+                webhook_log('brief enable failed', ['owner_id' => $ownerId, 'error' => $e->getMessage()]);
+                $replyText = '設定の更新に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
+    if ($text === 'brief off' || $text === 'ブリーフオフ') {
+        $replyText = '朝ブリーフを停止しました';
+        if ($ownerId !== null && $userRepo !== null) {
+            try {
+                $userRepo->updateBriefEnabled($ownerId, 0);
+                webhook_log('brief disabled', ['owner_id' => $ownerId]);
+            } catch (\Throwable $e) {
+                webhook_log('brief disable failed', ['owner_id' => $ownerId, 'error' => $e->getMessage()]);
+                $replyText = '設定の更新に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
         continue;
     }
 

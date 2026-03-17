@@ -74,7 +74,7 @@ try {
     exit(1);
 }
 
-$users = $userRepo->getAllUsers();
+$users = $userRepo->getAllBriefEnabledUsers();
 cron_log('morning brief user count', ['count' => count($users)]);
 
 $today = (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('Y-m-d');

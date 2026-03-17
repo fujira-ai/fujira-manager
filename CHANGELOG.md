@@ -4,6 +4,22 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.18-brief-toggle
+
+### Added
+- `users.brief_enabled` column
+- `UserRepository::getAllBriefEnabledUsers(): array`
+- `UserRepository::updateBriefEnabled(int $ownerId, int $enabled): void`
+- LINE commands `brief on` / `brief off` / `ブリーフオン` / `ブリーフオフ`
+
+### Changed
+- morning brief cron now targets only users with `brief_enabled = 1`
+
+### Result
+Users can now control whether they receive morning brief pushes
+
+---
+
 ## v0.17-morning-brief-push
 
 ### Added
