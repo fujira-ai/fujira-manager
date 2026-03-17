@@ -43,7 +43,8 @@ function build_brief_message(array $todayTasks, array $noneTasks): string
     if (!empty($todayTasks)) {
         $sections[] = "\n■ 今日の期限";
         foreach ($todayTasks as $t) {
-            $sections[] = $counter++ . '. ' . $t['title'];
+            $prefix = (!empty($t['due_time'])) ? $t['due_time'] . ' ' : '';
+            $sections[] = $counter++ . '. ' . $prefix . $t['title'];
         }
     }
 

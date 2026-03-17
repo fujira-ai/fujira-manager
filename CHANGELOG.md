@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.21-brief-ordering
+
+### Improved
+- today tasks in brief are now ordered with due_time tasks first
+- due_time is now shown in today brief output when available
+
+### Result
+Daily brief is easier to scan and closer to real execution order
+
+---
+
 ## v0.20-task-due-time
 
 ### Added

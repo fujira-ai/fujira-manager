@@ -623,7 +623,8 @@ foreach ($data['events'] as $event) {
                     if (!empty($todayTasks)) {
                         $sections[] = "\n■ 今日の期限";
                         foreach ($todayTasks as $t) {
-                            $sections[] = $counter++ . '. ' . $t['title'];
+                            $prefix = (!empty($t['due_time'])) ? $t['due_time'] . ' ' : '';
+                            $sections[] = $counter++ . '. ' . $prefix . $t['title'];
                         }
                     }
 
