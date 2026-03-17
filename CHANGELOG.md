@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.20-task-due-time
+
+### Added
+- `tasks.due_time` column
+- minimal time parsing for inputs such as `23時`, `23時半`, `13:30`
+
+### Result
+Users can now create tasks with lightweight due-time information while staying in the task model
+
+---
+
 ## v0.19.1-date-prefix-empty-guard
 
 ### Fixed

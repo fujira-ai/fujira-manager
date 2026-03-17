@@ -46,6 +46,7 @@ CREATE TABLE tasks (
     title VARCHAR(255) NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'open',
     due_date DATE DEFAULT NULL,
+    due_time VARCHAR(16) DEFAULT NULL,
     priority VARCHAR(16) NOT NULL DEFAULT 'medium',
     task_type VARCHAR(32) DEFAULT NULL,
     source VARCHAR(32) DEFAULT NULL,

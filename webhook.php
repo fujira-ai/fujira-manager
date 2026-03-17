@@ -520,6 +520,7 @@ foreach ($data['events'] as $event) {
 
         // Parse due_date from natural Japanese date prefixes
         $dueDate   = null;
+        $dueTime   = null;
         $saveTitle = $text;
         $tz        = new DateTimeZone('Asia/Tokyo');
 
@@ -533,6 +534,20 @@ foreach ($data['events'] as $event) {
             $dueDate = $d->format('Y-m-d');
         }
 
+        // Parse due_time from the start of saveTitle (only when due_date was resolved)
+        if ($dueDate !== null && $saveTitle !== '') {
+            if (preg_match('/^(\d{1,2}:\d{2})[ 　]*(.*)$/u', $saveTitle, $tm)) {
+                $dueTime   = $tm[1];
+                $saveTitle = trim($tm[2]);
+            } elseif (preg_match('/^(\d{1,2}時半)[ 　]*(.*)$/u', $saveTitle, $tm)) {
+                $dueTime   = $tm[1];
+                $saveTitle = trim(ltrim($tm[2], 'に'));
+            } elseif (preg_match('/^(\d{1,2}時)[ 　]*(.*)$/u', $saveTitle, $tm)) {
+                $dueTime   = $tm[1];
+                $saveTitle = trim(ltrim($tm[2], 'に'));
+            }
+        }
+
         if ($saveTitle === '') {
             webhook_log('task skipped: empty title after prefix strip', ['text' => $text, 'owner_id' => $ownerId]);
             if ($replyToken !== '') {
@@ -542,8 +557,8 @@ foreach ($data['events'] as $event) {
         }
 
         try {
-            $taskId = $taskRepo->create($ownerId, $saveTitle, $dueDate);
-            webhook_log('task created', ['owner_id' => $ownerId, 'title' => $saveTitle, 'due_date' => $dueDate, 'task_id' => $taskId]);
+            $taskId = $taskRepo->create($ownerId, $saveTitle, $dueDate, $dueTime);
+            webhook_log('task created', ['owner_id' => $ownerId, 'title' => $saveTitle, 'due_date' => $dueDate, 'due_time' => $dueTime, 'task_id' => $taskId]);
         } catch (\Throwable $e) {
             webhook_log('task create failed', ['error' => $e->getMessage()]);
         }
