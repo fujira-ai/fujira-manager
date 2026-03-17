@@ -233,6 +233,28 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
+    // Task complete command
+    if (preg_match('/^完了\s+(\d+)$|^\/done\s+(\d+)$/', $text, $matches)) {
+        $taskId = (int) ($matches[1] !== '' ? $matches[1] : $matches[2]);
+        $replyText = '該当する open task が見つかりません';
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $done = $taskRepo->completeOpenTaskById($ownerId, $taskId);
+                if ($done !== null) {
+                    $replyText = "完了にしました:\n・" . $done['title'];
+                    webhook_log('task completed', ['owner_id' => $ownerId, 'task_id' => $taskId]);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('task complete failed', ['error' => $e->getMessage()]);
+                $replyText = 'タスク完了処理に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
     // Save task
     webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text]);
 

@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.6-task-complete
+
+### Added
+- LINE command `完了 {id}` / `/done {id}`
+- `TaskRepository::completeOpenTaskById(int $ownerId, int $taskId): ?array`
+
+### Result
+Users can now mark their own open tasks as done from LINE
+
+---
+
 ## v0.5-task-list
 
 ### Added
