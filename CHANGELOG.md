@@ -4,6 +4,32 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.8-task-delete
+
+### Added
+- LINE command `削除 {n}` / `/delete {n}` / `/del {n}` for deleting open tasks
+- `TaskRepository::deleteOpenTaskById(int $ownerId, int $taskId): ?array`
+
+### Changed
+- delete commands are excluded from task storage
+
+### Dev Notes
+- added reusable SQL reset strategy for development data initialization
+
+---
+
+## v0.7.1-conv-state-save-fix
+
+### Fixed
+- `ConvStateRepository::saveState()` rewritten from UPSERT syntax to explicit SELECT + INSERT/UPDATE
+- added debug logs for task list map saving
+- added debug logs for task completion state loading and task id resolution
+
+### Result
+Numbered task list state can now be stored reliably in `conv_state`, improving `完了 {n}` / `/done {n}` handling
+
+---
+
 ## v0.7-list-number-complete
 
 ### Added
