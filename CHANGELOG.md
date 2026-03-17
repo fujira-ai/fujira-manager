@@ -4,6 +4,20 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.13-task-due-date
+
+### Added
+- support for `今日` / `明日` prefix to set due_date automatically
+- due_date is now stored when creating tasks
+
+### Changed
+- TaskRepository::create() now accepts optional due_date
+
+### Result
+Users can create tasks with implicit due dates using natural input
+
+---
+
 ## v0.12-task-undo
 
 ### Added

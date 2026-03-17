@@ -448,9 +448,23 @@ foreach ($data['events'] as $event) {
     }
 
     if (!$isCommand && $ownerId !== null && $taskRepo !== null && $text !== '') {
+        // Parse due_date from "今日 XXX" or "明日 XXX"
+        $dueDate    = null;
+        $saveTitle  = $text;
+        $tz         = new DateTimeZone('Asia/Tokyo');
+        if (preg_match('/^今日\s+(.+)$/', $text, $dm)) {
+            $saveTitle = trim($dm[1]);
+            $dueDate   = (new DateTime('now', $tz))->format('Y-m-d');
+        } elseif (preg_match('/^明日\s+(.+)$/', $text, $dm)) {
+            $saveTitle = trim($dm[1]);
+            $d = new DateTime('now', $tz);
+            $d->modify('+1 day');
+            $dueDate = $d->format('Y-m-d');
+        }
+
         try {
-            $taskId = $taskRepo->create($ownerId, $text);
-            webhook_log('task created', ['owner_id' => $ownerId, 'title' => $text, 'task_id' => $taskId]);
+            $taskId = $taskRepo->create($ownerId, $saveTitle, $dueDate);
+            webhook_log('task created', ['owner_id' => $ownerId, 'title' => $saveTitle, 'due_date' => $dueDate, 'task_id' => $taskId]);
         } catch (\Throwable $e) {
             webhook_log('task create failed', ['error' => $e->getMessage()]);
         }

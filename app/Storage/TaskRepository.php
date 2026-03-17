@@ -91,15 +91,16 @@ final class TaskRepository
         return $stmt->fetchAll();
     }
 
-    public function create(int $ownerId, string $title): int
+    public function create(int $ownerId, string $title, ?string $dueDate = null): int
     {
-        $sql = 'INSERT INTO tasks (owner_id, title, status, source) VALUES (:owner_id, :title, :status, :source)';
+        $sql = 'INSERT INTO tasks (owner_id, title, status, source, due_date) VALUES (:owner_id, :title, :status, :source, :due_date)';
         $stmt = $this->db->pdo()->prepare($sql);
         $stmt->execute([
             'owner_id' => $ownerId,
             'title'    => $title,
             'status'   => 'open',
             'source'   => 'line',
+            'due_date' => $dueDate,
         ]);
         return (int) $this->db->pdo()->lastInsertId();
     }
