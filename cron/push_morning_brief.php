@@ -47,7 +47,7 @@ function build_brief_message(array $todayTasks, array $noneTasks): string
             $sections[] = ($i + 1) . '. ' . $prefix . $t['title'];
         }
         $sections[] = '';
-        $sections[] = 'まずは1件目から進めてください。';
+        $sections[] = 'まずは「1」から進めてください。';
         return implode("\n", $sections);
     }
 

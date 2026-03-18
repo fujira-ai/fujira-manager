@@ -33,19 +33,34 @@ function cron_log(string $message, array $context = []): void
 */
 function build_midday_message(array $todayTasks, array $noneTasks): string
 {
+    // Priority: today with due_time ASC → today without due_time → no-date
+    // $todayTasks is already sorted by getTodayTasksByOwner (due_time あり先・ASC)
     $pending = array_merge($todayTasks, $noneTasks);
-    $count   = count($pending);
+    $total   = count($pending);
 
     $sections = [
         'お昼の確認です。',
         '',
-        '未完了のタスクが' . $count . '件あります。',
+        '未完了のタスクが' . $total . '件あります。',
+        '',
     ];
-    foreach ($pending as $t) {
-        $sections[] = '・' . $t['title'];
+
+    if ($total <= 3) {
+        foreach ($pending as $t) {
+            $sections[] = '・' . $t['title'];
+        }
+        $sections[] = '';
+        $sections[] = '今日の分を1件だけでも進めましょう。';
+    } else {
+        $top       = array_slice($pending, 0, 3);
+        $remaining = $total - 3;
+        $sections[] = '優先タスク：';
+        foreach ($top as $t) {
+            $sections[] = '・' . $t['title'];
+        }
+        $sections[] = '';
+        $sections[] = '残り' . $remaining . '件';
     }
-    $sections[] = '';
-    $sections[] = '今日の分を1件だけでも進めましょう。';
 
     return implode("\n", $sections);
 }
