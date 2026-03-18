@@ -23,48 +23,30 @@ function cron_log(string $message, array $context = []): void
     }
     $line .= PHP_EOL;
 
-    @file_put_contents($logDir . '/cron_morning_brief.log', $line, FILE_APPEND);
+    @file_put_contents($logDir . '/cron_midday_brief.log', $line, FILE_APPEND);
 }
 
 /*
 |--------------------------------------------------------------------------
-| Brief message builder
+| Midday message builder
 |--------------------------------------------------------------------------
 */
-function build_brief_message(array $todayTasks, array $noneTasks): string
+function build_midday_message(array $todayTasks, array $noneTasks): string
 {
-    if (!empty($todayTasks)) {
-        $count    = count($todayTasks);
-        $sections = [
-            'おはようございます。',
-            '',
-            '今日のタスクは' . $count . '件です。',
-            '',
-            '■ 今日',
-        ];
-        foreach ($todayTasks as $i => $t) {
-            $prefix = (!empty($t['due_time'])) ? $t['due_time'] . ' ' : '';
-            $sections[] = ($i + 1) . '. ' . $prefix . $t['title'];
-        }
-        $sections[] = '';
-        $sections[] = 'まずは1件目から進めてください。';
-        return implode("\n", $sections);
-    }
+    $pending = array_merge($todayTasks, $noneTasks);
+    $count   = count($pending);
 
-    // today tasks empty, only non-dated tasks
-    $count    = count($noneTasks);
     $sections = [
-        'おはようございます。',
+        'お昼の確認です。',
         '',
-        '今日締め切りのタスクはありません。',
-        '期限なしのタスクが' . $count . '件あります。',
-        '',
+        '未完了のタスクが' . $count . '件あります。',
     ];
-    foreach ($noneTasks as $i => $t) {
-        $sections[] = ($i + 1) . '. ' . $t['title'];
+    foreach ($pending as $t) {
+        $sections[] = '・' . $t['title'];
     }
     $sections[] = '';
-    $sections[] = '今日も1件だけでも進めましょう。';
+    $sections[] = '今日の分を1件だけでも進めましょう。';
+
     return implode("\n", $sections);
 }
 
@@ -73,7 +55,7 @@ function build_brief_message(array $todayTasks, array $noneTasks): string
 | Main
 |--------------------------------------------------------------------------
 */
-cron_log('morning brief start');
+cron_log('midday brief start');
 
 try {
     $db       = new \FujiraManager\Storage\Database($config['db']);
@@ -81,12 +63,12 @@ try {
     $taskRepo = new \FujiraManager\Storage\TaskRepository($db);
     $line     = new \FujiraManager\Services\LineService($config);
 } catch (\Throwable $e) {
-    cron_log('morning brief init failed', ['error' => $e->getMessage()]);
+    cron_log('midday brief init failed', ['error' => $e->getMessage()]);
     exit(1);
 }
 
 $users = $userRepo->getAllBriefEnabledUsers();
-cron_log('morning brief user count', ['count' => count($users)]);
+cron_log('midday brief user count', ['count' => count($users)]);
 
 $today = (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('Y-m-d');
 
@@ -99,14 +81,14 @@ foreach ($users as $user) {
         $noneTasks  = $taskRepo->getNoDueDateTasksByOwner($ownerId);
 
         if (empty($todayTasks) && empty($noneTasks)) {
-            cron_log('morning brief skipped (no tasks)', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
+            cron_log('midday brief skipped (no tasks)', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
             continue;
         }
 
-        $message = build_brief_message($todayTasks, $noneTasks);
+        $message = build_midday_message($todayTasks, $noneTasks);
         $line->pushMessage($lineUserId, $message);
-        cron_log('morning brief sent', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
+        cron_log('midday brief sent', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
     } catch (\Throwable $e) {
-        cron_log('morning brief failed', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId, 'error' => $e->getMessage()]);
+        cron_log('midday brief failed', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId, 'error' => $e->getMessage()]);
     }
 }
