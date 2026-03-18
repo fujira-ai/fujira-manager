@@ -4,6 +4,19 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.25.1-task-save-fallback-fix
+
+### Fixed
+- prevented fallback response after successful task creation
+- task creation now replies with a registration confirmation
+- `isCommand` narrowed to pure non-task commands only
+- `/ping` and brief toggle handlers moved before task-save flow
+
+### Result
+Natural task input now registers cleanly without falling through to echo-style fallback responses
+
+---
+
 ## v0.25-input-normalization
 
 ### Improved

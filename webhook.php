@@ -521,31 +521,59 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
+    // /ping
+    if ($text === '/ping') {
+        if ($replyToken !== '') {
+            line_reply($replyToken, 'pong');
+        }
+        continue;
+    }
+
+    // Brief on/off
+    if ($text === 'brief on' || $text === 'ブリーフオン') {
+        $replyText = '朝ブリーフを有効にしました';
+        if ($ownerId !== null && $userRepo !== null) {
+            try {
+                $userRepo->updateBriefEnabled($ownerId, 1);
+                webhook_log('brief enabled', ['owner_id' => $ownerId]);
+            } catch (\Throwable $e) {
+                webhook_log('brief enable failed', ['owner_id' => $ownerId, 'error' => $e->getMessage()]);
+                $replyText = '設定の更新に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
+    if ($text === 'brief off' || $text === 'ブリーフオフ') {
+        $replyText = '朝ブリーフを停止しました';
+        if ($ownerId !== null && $userRepo !== null) {
+            try {
+                $userRepo->updateBriefEnabled($ownerId, 0);
+                webhook_log('brief disabled', ['owner_id' => $ownerId]);
+            } catch (\Throwable $e) {
+                webhook_log('brief disable failed', ['owner_id' => $ownerId, 'error' => $e->getMessage()]);
+                $replyText = '設定の更新に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
     // Save task
     $isCommand = ($text === '一覧'
         || $text === '/list'
         || $text === '履歴'
         || $text === '/history'
-        || $text === '今日'
-        || $text === '/today'
-        || $text === '明日'
-        || $text === '/tomorrow'
-        || $text === '/ping'
-        || $text === '/brief'
-        || $text === 'ブリーフ'
-        || $text === 'brief on'
-        || $text === 'ブリーフオン'
-        || $text === 'brief off'
-        || $text === 'ブリーフオフ'
         || $text === 'help'
         || $text === 'ヘルプ'
         || $text === '/help'
-        || $text === '完了'
-        || $text === '削除'
-        || $text === '戻す'
-        || preg_match('/^(?:完了|\/done)\s+\d+$/u', $text) === 1
-        || preg_match('/^(?:削除|\/delete|\/del)\s+\d+$/u', $text) === 1
-        || preg_match('/^(?:戻す|\/undo)\s+\d+$/u', $text) === 1);
+        || $text === '/brief'
+        || $text === 'ブリーフ');
 
     webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text, 'is_command' => $isCommand]);
 
@@ -604,52 +632,16 @@ foreach ($data['events'] as $event) {
         try {
             $taskId = $taskRepo->create($ownerId, $saveTitle, $dueDate, $dueTime);
             webhook_log('task created', ['owner_id' => $ownerId, 'title' => $saveTitle, 'due_date' => $dueDate, 'due_time' => $dueTime, 'task_id' => $taskId]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, "登録しました:\n・" . $saveTitle);
+            }
         } catch (\Throwable $e) {
             webhook_log('task create failed', ['error' => $e->getMessage()]);
         }
+        continue;
     }
 
     if ($replyToken === '') {
-        continue;
-    }
-
-    // simple test responses
-    if ($text === '/ping') {
-        line_reply($replyToken, 'pong');
-        continue;
-    }
-
-    if ($text === 'brief on' || $text === 'ブリーフオン') {
-        $replyText = '朝ブリーフを有効にしました';
-        if ($ownerId !== null && $userRepo !== null) {
-            try {
-                $userRepo->updateBriefEnabled($ownerId, 1);
-                webhook_log('brief enabled', ['owner_id' => $ownerId]);
-            } catch (\Throwable $e) {
-                webhook_log('brief enable failed', ['owner_id' => $ownerId, 'error' => $e->getMessage()]);
-                $replyText = '設定の更新に失敗しました';
-            }
-        }
-        if ($replyToken !== '') {
-            line_reply($replyToken, $replyText);
-        }
-        continue;
-    }
-
-    if ($text === 'brief off' || $text === 'ブリーフオフ') {
-        $replyText = '朝ブリーフを停止しました';
-        if ($ownerId !== null && $userRepo !== null) {
-            try {
-                $userRepo->updateBriefEnabled($ownerId, 0);
-                webhook_log('brief disabled', ['owner_id' => $ownerId]);
-            } catch (\Throwable $e) {
-                webhook_log('brief disable failed', ['owner_id' => $ownerId, 'error' => $e->getMessage()]);
-                $replyText = '設定の更新に失敗しました';
-            }
-        }
-        if ($replyToken !== '') {
-            line_reply($replyToken, $replyText);
-        }
         continue;
     }
 
