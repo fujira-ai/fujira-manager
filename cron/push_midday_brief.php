@@ -47,20 +47,22 @@ function build_midday_message(array $todayTasks, array $noneTasks): string
 
     if ($total <= 3) {
         foreach ($pending as $t) {
-            $sections[] = '・' . $t['title'];
+            $label = (!empty($t['due_time'])) ? $t['due_time'] . ' ' . $t['title'] : $t['title'];
+            $sections[] = '・' . $label;
         }
-        $sections[] = '';
-        $sections[] = '今日の分を1件だけでも進めましょう。';
     } else {
         $top       = array_slice($pending, 0, 3);
         $remaining = $total - 3;
         $sections[] = '優先タスク：';
         foreach ($top as $t) {
-            $sections[] = '・' . $t['title'];
+            $label = (!empty($t['due_time'])) ? $t['due_time'] . ' ' . $t['title'] : $t['title'];
+            $sections[] = '・' . $label;
         }
         $sections[] = '';
         $sections[] = '残り' . $remaining . '件';
     }
+    $sections[] = '';
+    $sections[] = 'この中から1つ進めましょう。';
 
     return implode("\n", $sections);
 }
