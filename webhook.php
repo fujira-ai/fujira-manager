@@ -207,6 +207,7 @@ foreach ($data['events'] as $event) {
 
     $replyToken = $event['replyToken'] ?? '';
     $text = trim((string) ($event['message']['text'] ?? ''));
+    $text = trim(preg_replace('/[ 　]+/u', ' ', $text));
     $lineUserId = (string) ($event['source']['userId'] ?? '');
 
     webhook_log('Text message received', [
@@ -269,7 +270,14 @@ foreach ($data['events'] as $event) {
     }
 
     // Undo command
-    if (preg_match('/^(?:戻す|\/undo)\s+(\d+)$/', $text, $matches)) {
+    if ($text === '戻す') {
+        if ($replyToken !== '') {
+            line_reply($replyToken, '取り消すタスク番号を指定してください（例: 戻す 1）');
+        }
+        continue;
+    }
+
+    if (preg_match('/^(?:戻す|\/undo)\s+(\d+)$/u', $text, $matches)) {
         $num    = (int) $matches[1];
         $taskId = $num;
 
@@ -354,7 +362,14 @@ foreach ($data['events'] as $event) {
     }
 
     // Task complete command
-    if (preg_match('/^(?:完了|\/done)\s+(\d+)$/', $text, $matches)) {
+    if ($text === '完了') {
+        if ($replyToken !== '') {
+            line_reply($replyToken, '完了するタスク番号を指定してください（例: 完了 1）');
+        }
+        continue;
+    }
+
+    if (preg_match('/^(?:完了|\/done)\s+(\d+)$/u', $text, $matches)) {
         $num    = (int) $matches[1];
         $taskId = $num;
 
@@ -401,7 +416,14 @@ foreach ($data['events'] as $event) {
     }
 
     // Task delete command
-    if (preg_match('/^(?:削除|\/delete|\/del)\s+(\d+)$/', $text, $matches)) {
+    if ($text === '削除') {
+        if ($replyToken !== '') {
+            line_reply($replyToken, '削除するタスク番号を指定してください（例: 削除 1）');
+        }
+        continue;
+    }
+
+    if (preg_match('/^(?:削除|\/delete|\/del)\s+(\d+)$/u', $text, $matches)) {
         $num    = (int) $matches[1];
         $taskId = $num;
 
@@ -518,9 +540,12 @@ foreach ($data['events'] as $event) {
         || $text === 'help'
         || $text === 'ヘルプ'
         || $text === '/help'
-        || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1
-        || preg_match('/^(?:削除|\/delete|\/del)\s+\d+$/', $text) === 1
-        || preg_match('/^(?:戻す|\/undo)\s+\d+$/', $text) === 1);
+        || $text === '完了'
+        || $text === '削除'
+        || $text === '戻す'
+        || preg_match('/^(?:完了|\/done)\s+\d+$/u', $text) === 1
+        || preg_match('/^(?:削除|\/delete|\/del)\s+\d+$/u', $text) === 1
+        || preg_match('/^(?:戻す|\/undo)\s+\d+$/u', $text) === 1);
 
     webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text, 'is_command' => $isCommand]);
 
@@ -697,8 +722,17 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
-    // default echo response
-    line_reply($replyToken, '受信: ' . $text);
+    // default fallback response
+    line_reply($replyToken, implode("\n", [
+        '理解できませんでした。',
+        '',
+        '例:',
+        '・今日 資料送る',
+        '・一覧',
+        '・完了 1',
+        '',
+        '困ったら「ヘルプ」と送ってください。',
+    ]));
 }
 
 http_response_code(200);

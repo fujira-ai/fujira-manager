@@ -4,6 +4,18 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.25-input-normalization
+
+### Improved
+- normalized user input (trim + whitespace normalization)
+- added validation messages for incomplete task commands
+- improved fallback guidance for unknown input
+
+### Result
+Users can interact more naturally without polluting tasks or triggering ambiguous command matches
+
+---
+
 ## v0.24-brief-quiet-mode
 
 ### Improved
