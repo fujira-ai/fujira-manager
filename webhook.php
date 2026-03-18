@@ -329,12 +329,26 @@ foreach ($data['events'] as $event) {
             try {
                 $tasks = $taskRepo->getOpenTasksByOwner($ownerId);
                 if (!empty($tasks)) {
+                    $tz       = new DateTimeZone('Asia/Tokyo');
+                    $listToday    = (new DateTime('now', $tz))->format('Y-m-d');
+                    $listTomorrow = (new DateTime('tomorrow', $tz))->format('Y-m-d');
                     $map   = [];
                     $lines = ['現在のタスク:'];
                     foreach ($tasks as $i => $t) {
                         $num        = $i + 1;
                         $map[(string)$num] = (int)$t['id'];
-                        $lines[]    = $num . '. ' . $t['title'];
+                        $line = $num . '. ' . $t['title'];
+                        if (!empty($t['due_time'])) {
+                            if ($t['due_date'] === $listToday) {
+                                $dateLbl = '今日';
+                            } elseif ($t['due_date'] === $listTomorrow) {
+                                $dateLbl = '明日';
+                            } else {
+                                $dateLbl = $t['due_date'] ?? '';
+                            }
+                            $line .= '（' . $dateLbl . ' ' . $t['due_time'] . '）';
+                        }
+                        $lines[] = $line;
                     }
                     $replyText = implode("\n", $lines);
 
@@ -633,7 +647,20 @@ foreach ($data['events'] as $event) {
             $taskId = $taskRepo->create($ownerId, $saveTitle, $dueDate, $dueTime);
             webhook_log('task created', ['owner_id' => $ownerId, 'title' => $saveTitle, 'due_date' => $dueDate, 'due_time' => $dueTime, 'task_id' => $taskId]);
             if ($replyToken !== '') {
-                line_reply($replyToken, "登録しました:\n・" . $saveTitle);
+                $msg = "登録しました:\n・" . $saveTitle;
+                if ($dueTime !== null) {
+                    $todayStr    = (new DateTime('now', $tz))->format('Y-m-d');
+                    $tomorrowStr = (new DateTime('tomorrow', $tz))->format('Y-m-d');
+                    if ($dueDate === $todayStr) {
+                        $dateLbl = '今日';
+                    } elseif ($dueDate === $tomorrowStr) {
+                        $dateLbl = '明日';
+                    } else {
+                        $dateLbl = $dueDate ?? '';
+                    }
+                    $msg .= "\n期限：" . $dateLbl . ' ' . $dueTime;
+                }
+                line_reply($replyToken, $msg);
             }
         } catch (\Throwable $e) {
             webhook_log('task create failed', ['error' => $e->getMessage()]);

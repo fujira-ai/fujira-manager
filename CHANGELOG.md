@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.26-due-time-display
+
+### Changed
+- open task list now includes `due_date` / `due_time` context when available
+- task creation confirmation now shows due date and time when available
+
+### Result
+Users can more easily understand when time-based tasks are scheduled
+
+---
+
 ## v0.25.1-task-save-fallback-fix
 
 ### Fixed
@@ -14,6 +25,7 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ### Result
 Natural task input now registers cleanly without falling through to echo-style fallback responses
+
 
 ---
 
