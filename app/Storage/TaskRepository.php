@@ -9,17 +9,17 @@ final class TaskRepository
 {
     public function __construct(private Database $db) {}
 
-    public function getOpenTasksByOwner(int $ownerId): array
+    public function getOpenTasksByOwner(int $ownerId, string $today, string $tomorrow): array
     {
-        $sql = 'SELECT id, title, due_date, due_time FROM tasks WHERE owner_id = :owner_id AND status = :status ORDER BY created_at DESC LIMIT 10';
+        $sql = 'SELECT id, title, due_date, due_time FROM tasks WHERE owner_id = :owner_id AND status = :status ORDER BY CASE WHEN due_date IS NULL THEN 3 WHEN due_date = :today THEN 0 WHEN due_date = :tomorrow THEN 1 ELSE 2 END, due_date ASC, CASE WHEN due_time IS NULL OR due_time = \'\' THEN 1 ELSE 0 END, due_time ASC, id DESC LIMIT 10';
         $stmt = $this->db->pdo()->prepare($sql);
-        $stmt->execute(['owner_id' => $ownerId, 'status' => 'open']);
+        $stmt->execute(['owner_id' => $ownerId, 'status' => 'open', 'today' => $today, 'tomorrow' => $tomorrow]);
         return $stmt->fetchAll();
     }
 
     public function completeOpenTaskById(int $ownerId, int $taskId): ?array
     {
-        $selectSql = 'SELECT id, title FROM tasks WHERE id = :id AND owner_id = :owner_id AND status = :status LIMIT 1';
+        $selectSql = 'SELECT id, title, due_date, due_time FROM tasks WHERE id = :id AND owner_id = :owner_id AND status = :status LIMIT 1';
         $stmt = $this->db->pdo()->prepare($selectSql);
         $stmt->execute(['id' => $taskId, 'owner_id' => $ownerId, 'status' => 'open']);
         $task = $stmt->fetch();
@@ -113,6 +113,14 @@ final class TaskRepository
         $stmt = $this->db->pdo()->prepare($sql);
         $stmt->execute(['owner_id' => $ownerId, 'status' => 'done']);
         return $stmt->fetchAll();
+    }
+
+    public function countOpenTasksByOwner(int $ownerId): int
+    {
+        $sql = 'SELECT COUNT(*) FROM tasks WHERE owner_id = :owner_id AND status = :status';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute(['owner_id' => $ownerId, 'status' => 'open']);
+        return (int) $stmt->fetchColumn();
     }
 
     public function create(int $ownerId, string $title, ?string $dueDate = null, ?string $dueTime = null): int

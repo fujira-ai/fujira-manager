@@ -4,6 +4,19 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.27 - 2026-03-18
+
+### Added
+- 完了後の残件数表示用に `countOpenTasksByOwner()` を追加
+
+### Changed
+- タスク一覧を「今日 / 明日 / その他 / 期限なし」で整理し、見やすさを改善
+- 時間あり・時間なしタスクを自然に表示できるよう一覧表示を調整
+- 完了メッセージを「✅ 完了：タイトル（期限）」形式に改善
+- 完了後に残りタスク件数を表示するよう変更
+
+---
+
 ## v0.25.2 - 2026-03-18
 
 ### Changed

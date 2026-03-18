@@ -24,6 +24,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- users
 -- users.id = internal owner_id
 -- line_user_id = external LINE identifier
+-- brief_enabled = morning brief push toggle
 -- ---------------------------------------------------------
 CREATE TABLE users (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -37,8 +38,9 @@ CREATE TABLE users (
 
 -- ---------------------------------------------------------
 -- tasks
--- existing structure preserved
--- owner_id is now INT UNSIGNED
+-- owner_id is INT UNSIGNED
+-- due_date = lightweight date
+-- due_time = lightweight time text (e.g. 13:30, 18時, 23時半)
 -- ---------------------------------------------------------
 CREATE TABLE tasks (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -74,6 +76,7 @@ CREATE TABLE memos (
 
 -- ---------------------------------------------------------
 -- schedules
+-- reserved for future schedule-oriented features
 -- ---------------------------------------------------------
 CREATE TABLE schedules (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -142,7 +145,7 @@ CREATE TABLE conversations (
 
 -- ---------------------------------------------------------
 -- push_logs
--- optional but useful for PUSH mode / cron history
+-- useful for push / cron history
 -- ---------------------------------------------------------
 CREATE TABLE push_logs (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

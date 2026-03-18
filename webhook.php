@@ -327,26 +327,53 @@ foreach ($data['events'] as $event) {
         $replyText = '現在のタスクはありません';
         if ($ownerId !== null && $taskRepo !== null) {
             try {
-                $tasks = $taskRepo->getOpenTasksByOwner($ownerId);
+                $tz           = new DateTimeZone('Asia/Tokyo');
+                $listToday    = (new DateTime('now', $tz))->format('Y-m-d');
+                $listTomorrow = (new DateTime('tomorrow', $tz))->format('Y-m-d');
+                $tasks = $taskRepo->getOpenTasksByOwner($ownerId, $listToday, $listTomorrow);
                 if (!empty($tasks)) {
-                    $tz       = new DateTimeZone('Asia/Tokyo');
-                    $listToday    = (new DateTime('now', $tz))->format('Y-m-d');
-                    $listTomorrow = (new DateTime('tomorrow', $tz))->format('Y-m-d');
-                    $map   = [];
-                    $lines = ['現在のタスク:'];
-                    foreach ($tasks as $i => $t) {
-                        $num        = $i + 1;
+                    $map          = [];
+                    $counter      = 1;
+                    $lines        = ['現在のタスク:'];
+                    $currentGroup = null;
+                    $groupLabels  = [
+                        'today'    => '■ 今日',
+                        'tomorrow' => '■ 明日',
+                        'other'    => '■ その他',
+                        'none'     => '■ 期限なし',
+                    ];
+
+                    foreach ($tasks as $t) {
+                        if (empty($t['due_date'])) {
+                            $group = 'none';
+                        } elseif ($t['due_date'] === $listToday) {
+                            $group = 'today';
+                        } elseif ($t['due_date'] === $listTomorrow) {
+                            $group = 'tomorrow';
+                        } else {
+                            $group = 'other';
+                        }
+
+                        if ($group !== $currentGroup) {
+                            $currentGroup = $group;
+                            $lines[] = '';
+                            $lines[] = $groupLabels[$group];
+                        }
+
+                        $num = $counter++;
                         $map[(string)$num] = (int)$t['id'];
+
                         $line = $num . '. ' . $t['title'];
-                        if (!empty($t['due_time'])) {
-                            if ($t['due_date'] === $listToday) {
-                                $dateLbl = '今日';
-                            } elseif ($t['due_date'] === $listTomorrow) {
-                                $dateLbl = '明日';
-                            } else {
-                                $dateLbl = $t['due_date'] ?? '';
+                        if ($group === 'today' || $group === 'tomorrow') {
+                            if (!empty($t['due_time'])) {
+                                $line .= '（' . $t['due_time'] . '）';
                             }
-                            $line .= '（' . $dateLbl . ' ' . $t['due_time'] . '）';
+                        } elseif ($group === 'other') {
+                            if (!empty($t['due_time'])) {
+                                $line .= '（' . $t['due_date'] . ' ' . $t['due_time'] . '）';
+                            } else {
+                                $line .= '（' . $t['due_date'] . '）';
+                            }
                         }
                         $lines[] = $line;
                     }
@@ -415,7 +442,28 @@ foreach ($data['events'] as $event) {
             try {
                 $done = $taskRepo->completeOpenTaskById($ownerId, $taskId);
                 if ($done !== null) {
-                    $replyText = "完了にしました:\n・" . $done['title'];
+                    $tz           = new DateTimeZone('Asia/Tokyo');
+                    $doneToday    = (new DateTime('now', $tz))->format('Y-m-d');
+                    $doneTomorrow = (new DateTime('tomorrow', $tz))->format('Y-m-d');
+
+                    $suffix = '';
+                    if (!empty($done['due_date'])) {
+                        if ($done['due_date'] === $doneToday) {
+                            $dateLbl = '今日';
+                        } elseif ($done['due_date'] === $doneTomorrow) {
+                            $dateLbl = '明日';
+                        } else {
+                            $dateLbl = $done['due_date'];
+                        }
+                        $suffix = !empty($done['due_time'])
+                            ? '（' . $dateLbl . ' ' . $done['due_time'] . '）'
+                            : '（' . $dateLbl . '）';
+                    } elseif (!empty($done['due_time'])) {
+                        $suffix = '（' . $done['due_time'] . '）';
+                    }
+
+                    $remaining = $taskRepo->countOpenTasksByOwner($ownerId);
+                    $replyText = '✅ 完了：' . $done['title'] . $suffix . "\n残り" . $remaining . '件です。';
                     webhook_log('task completed', ['owner_id' => $ownerId, 'task_id' => $taskId]);
                 }
             } catch (\Throwable $e) {
