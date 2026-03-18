@@ -4,6 +4,16 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.24-brief-quiet-mode
+
+### Improved
+- morning brief push is skipped when there are no today tasks and no undated open tasks
+
+### Result
+Users no longer receive empty morning brief notifications
+
+---
+
 ## v0.23-onboarding-message
 
 ### Improved

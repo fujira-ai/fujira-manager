@@ -87,8 +87,13 @@ foreach ($users as $user) {
     try {
         $todayTasks = $taskRepo->getTodayTasksByOwner($ownerId, $today);
         $noneTasks  = $taskRepo->getNoDueDateTasksByOwner($ownerId);
-        $message    = build_brief_message($todayTasks, $noneTasks);
 
+        if (empty($todayTasks) && empty($noneTasks)) {
+            cron_log('morning brief skipped (no tasks)', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
+            continue;
+        }
+
+        $message = build_brief_message($todayTasks, $noneTasks);
         $line->pushMessage($lineUserId, $message);
         cron_log('morning brief sent', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
     } catch (\Throwable $e) {
