@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.25.2 - 2026-03-18
+
+### Changed
+- エラーメッセージから内部用語「open task」を削除
+- 「該当する open task が見つかりません」→「該当するタスクが見つかりません」に修正
+
+### Result
+ユーザーにとって自然な日本語表現に改善
+
+---
+
 ## v0.26-due-time-display
 
 ### Changed

@@ -324,7 +324,7 @@ foreach ($data['events'] as $event) {
 
     // Task list command
     if ($text === '一覧' || $text === '/list') {
-        $replyText = '現在 open のタスクはありません';
+        $replyText = '現在のタスクはありません';
         if ($ownerId !== null && $taskRepo !== null) {
             try {
                 $tasks = $taskRepo->getOpenTasksByOwner($ownerId);
@@ -410,7 +410,7 @@ foreach ($data['events'] as $event) {
             }
         }
 
-        $replyText = '該当する open task が見つかりません';
+        $replyText = '該当するタスクが見つかりません';
         if ($ownerId !== null && $taskRepo !== null) {
             try {
                 $done = $taskRepo->completeOpenTaskById($ownerId, $taskId);
@@ -464,7 +464,7 @@ foreach ($data['events'] as $event) {
             }
         }
 
-        $replyText = '該当する open task が見つかりません';
+        $replyText = '該当するタスクが見つかりません';
         if ($ownerId !== null && $taskRepo !== null) {
             try {
                 $deleted = $taskRepo->deleteOpenTaskById($ownerId, $taskId);
