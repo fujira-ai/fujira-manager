@@ -4,6 +4,26 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.23-onboarding-message
+
+### Improved
+- follow event message updated with onboarding guide
+
+### Result
+New users can start using Fujira Manager without external instructions
+
+---
+
+## v0.22-help-command
+
+### Added
+- LINE command `help` / `ヘルプ` / `/help`
+
+### Result
+Users can now check the basic usage of Fujira Manager directly from LINE
+
+---
+
 ## v0.21-brief-ordering
 
 ### Improved

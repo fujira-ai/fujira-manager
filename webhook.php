@@ -174,7 +174,24 @@ foreach ($data['events'] as $event) {
     if ($eventType === 'follow') {
         $replyToken = $event['replyToken'] ?? '';
         if ($replyToken !== '') {
-            line_reply($replyToken, '友だち追加ありがとうございます。Fujira Manager 起動確認OKです。');
+            $welcomeText = implode("\n", [
+                '友だち追加ありがとうございます。',
+                '',
+                'Fujira Manager は、LINEで使えるタスク管理です。',
+                '',
+                '【使い方の例】',
+                '・今日 資料送る',
+                '・明日 税理士に連絡',
+                '・今日 13:30 歯医者',
+                '',
+                '【よく使うコマンド】',
+                '・一覧',
+                '・完了 1',
+                '・/brief',
+                '',
+                '困ったら「ヘルプ」と送ってください。',
+            ]);
+            line_reply($replyToken, $welcomeText);
         }
         continue;
     }
@@ -498,6 +515,9 @@ foreach ($data['events'] as $event) {
         || $text === 'ブリーフオン'
         || $text === 'brief off'
         || $text === 'ブリーフオフ'
+        || $text === 'help'
+        || $text === 'ヘルプ'
+        || $text === '/help'
         || preg_match('/^(?:完了|\/done)\s+\d+$/', $text) === 1
         || preg_match('/^(?:削除|\/delete|\/del)\s+\d+$/', $text) === 1
         || preg_match('/^(?:戻す|\/undo)\s+\d+$/', $text) === 1);
@@ -645,6 +665,35 @@ foreach ($data['events'] as $event) {
         if ($replyToken !== '') {
             line_reply($replyToken, $replyText);
         }
+        continue;
+    }
+
+    if ($text === 'help' || $text === 'ヘルプ' || $text === '/help') {
+        $helpText = implode("\n", [
+            '【使い方】',
+            '',
+            '■ タスク追加',
+            '・今日 資料送る',
+            '・明日 税理士に連絡',
+            '・今日 13:30 歯医者',
+            '',
+            '■ タスク管理',
+            '・一覧',
+            '・完了 1',
+            '・削除 1',
+            '・履歴',
+            '・戻す 1',
+            '',
+            '■ 今日 / 明日',
+            '・今日',
+            '・明日',
+            '',
+            '■ ブリーフ',
+            '・/brief',
+            '・brief on',
+            '・brief off',
+        ]);
+        line_reply($replyToken, $helpText);
         continue;
     }
 
