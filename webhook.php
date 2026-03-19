@@ -247,23 +247,45 @@ foreach ($data['events'] as $event) {
     // Follow event
     if ($eventType === 'follow') {
         $replyToken = $event['replyToken'] ?? '';
+        $lineUserId = (string) ($event['source']['userId'] ?? '');
+
+        // Register user and save onboarding state
+        if ($lineUserId !== '' && $userRepo !== null && $convStateRepo !== null) {
+            try {
+                $user = $userRepo->findByLineUserId($lineUserId);
+                if ($user === null) {
+                    $followOwnerId = $userRepo->create($lineUserId);
+                    webhook_log('user created on follow', ['line_user_id' => $lineUserId, 'owner_id' => $followOwnerId]);
+                } else {
+                    $followOwnerId = (int) $user['id'];
+                }
+                $state = $convStateRepo->getState($followOwnerId);
+                if (empty($state['onboarding_started_at'])) {
+                    $state['onboarding_started_at']    = (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('Y-m-d H:i:s');
+                    $state['onboarding_followup_sent'] = false;
+                    $convStateRepo->saveState($followOwnerId, $state);
+                    webhook_log('onboarding state saved', ['owner_id' => $followOwnerId]);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('follow event state save failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         if ($replyToken !== '') {
             $welcomeText = implode("\n", [
-                '友だち追加ありがとうございます。',
+                'はじめまして、フジラマネージャーです。',
                 '',
-                'Fujira Manager は、LINEで使えるタスク管理です。',
+                'ここでは、LINEでタスク管理ができます。',
                 '',
-                '【使い方の例】',
-                '・今日 資料送る',
-                '・明日 税理士に連絡',
-                '・今日 13:30 歯医者',
+                'まずは試しに、1つ送ってみてください👇',
                 '',
-                '【よく使うコマンド】',
-                '・一覧',
-                '・完了 1',
-                '・/brief',
+                '「今日 13:30 歯医者」',
+                '「明日 税理士に連絡」',
+                '「請求書確認」',
                 '',
-                '困ったら「ヘルプ」と送ってください。',
+                'このように送るだけで登録されます。',
+                '',
+                '※あとで「一覧」と送ると確認できます',
             ]);
             line_reply($replyToken, $welcomeText);
         }
