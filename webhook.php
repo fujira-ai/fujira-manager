@@ -667,6 +667,10 @@ foreach ($data['events'] as $event) {
             $d = new DateTime('now', $tz);
             $d->modify('+1 day');
             $dueDate = $d->format('Y-m-d');
+        } elseif (preg_match('/^(\d{1,2})月(\d{1,2})日[ 　]+(.+)$/u', $text, $dm)) {
+            $saveTitle = trim($dm[3]);
+            $year      = (int) (new DateTime('now', $tz))->format('Y');
+            $dueDate   = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
         }
 
         // Parse due_time from the start of saveTitle (only when due_date was resolved)
@@ -696,7 +700,7 @@ foreach ($data['events'] as $event) {
             webhook_log('task created', ['owner_id' => $ownerId, 'title' => $saveTitle, 'due_date' => $dueDate, 'due_time' => $dueTime, 'task_id' => $taskId]);
             if ($replyToken !== '') {
                 $msg = "登録しました:\n・" . $saveTitle;
-                if ($dueTime !== null) {
+                if ($dueDate !== null) {
                     $todayStr    = (new DateTime('now', $tz))->format('Y-m-d');
                     $tomorrowStr = (new DateTime('tomorrow', $tz))->format('Y-m-d');
                     if ($dueDate === $todayStr) {
@@ -704,9 +708,13 @@ foreach ($data['events'] as $event) {
                     } elseif ($dueDate === $tomorrowStr) {
                         $dateLbl = '明日';
                     } else {
-                        $dateLbl = $dueDate ?? '';
+                        $dateLbl = $dueDate;
                     }
-                    $msg .= "\n期限：" . $dateLbl . ' ' . $dueTime;
+                    if ($dueTime !== null) {
+                        $msg .= "\n期限：" . $dateLbl . ' ' . $dueTime;
+                    } else {
+                        $msg .= "\n期限：" . $dateLbl;
+                    }
                 }
                 line_reply($replyToken, $msg);
             }
