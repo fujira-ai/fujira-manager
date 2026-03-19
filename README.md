@@ -1,23 +1,117 @@
-# Fujira Manager Starter Template
+# フジラマネージャー（Fujira Manager）
 
-## Upload target
-Upload this whole directory to:
+LINE上で動作する、個人向けAI秘書（タスク管理特化）。
 
-`https://fujira.tokyo/fujira-manager/`
+👉 考えずにタスク管理ができる状態を作るツール
 
-## First setup
-1. Edit `app/config.php`
-2. Import `sql/schema.sql`
-3. Confirm `https://fujira.tokyo/fujira-manager/index.php`
-4. Set LINE webhook to `https://fujira.tokyo/fujira-manager/webhook.php`
-5. Add cron jobs from `docs/cron-example.txt`
+---
 
-## Included folders
-- `app/Core` : AI secretary logic
-- `app/Storage` : DB repositories
-- `app/Services` : LINE / cron / debug services
-- `app/Helpers` : small helper functions
-- `cron` : scheduled jobs
-- `admin` : future admin pages
-- `logs` : app and cron logs
-- `sql` : initial MySQL schema
+## ■ 概要
+
+フジラマネージャーは、  
+自然文でタスクを登録し、一覧・完了・通知を通じて  
+日常のタスク管理をシンプルに行うLINE Botです。
+
+- 今日 13:30 歯医者
+- 3月27日 家賃引落確認
+- 請求書確認
+
+このように送るだけでタスクが登録されます。
+
+---
+
+## ■ 主な機能（v1.0）
+
+### ■ タスク管理
+- 自然文でタスク登録
+- 日付・時間の自動抽出
+- 未完了タスク一覧（ページ送り対応）
+- 通し番号での完了処理
+
+---
+
+### ■ 通知（Push）
+
+■ 朝通知
+- 今日のタスクを一覧表示
+- 時間付きタスクを優先表示
+
+■ 昼通知
+- 今日 + 期限なしタスクを表示
+- 最大3件に絞って提示
+- 「今やる1つ」を決める設計
+
+■ 前日通知
+- 明日のタスクを通知
+- 事前準備を促す
+
+---
+
+## ■ コンセプト
+
+👉 思考を止めずに使える最小タスク管理
+
+このプロダクトは「機能」ではなく  
+“習慣を作ること”を目的としています。
+
+---
+
+## ■ v1.0 定義書
+
+詳細仕様はこちら：
+
+fujira-manager_v1.0_spec.md
+
+---
+
+## ■ セットアップ
+
+### アップロード先
+
+https://fujira.tokyo/fujira-manager/
+
+---
+
+### 初期設定手順
+
+1. app/config.php を編集  
+2. sql/schema.sql をインポート  
+3. 動作確認  
+
+https://fujira.tokyo/fujira-manager/index.php
+
+4. LINE webhook設定  
+
+https://fujira.tokyo/fujira-manager/webhook.php
+
+5. cron設定  
+
+docs/cron-example.txt
+
+---
+
+## ■ ディレクトリ構成
+
+- app/Core : AI秘書ロジック
+- app/Storage : DBリポジトリ
+- app/Services : LINE / cron処理
+- app/Helpers : ヘルパー関数
+- cron : 定期実行スクリプト
+- admin : 管理画面（今後）
+- logs : ログ
+- sql : 初期スキーマ
+
+---
+
+## ■ 今後（v1.1予定）
+
+- リッチメニュー導入
+- 今日のタスクをワンタップ表示
+- ヘルプ機能の改善
+- 秘書の名前設定機能
+
+---
+
+## ■ 本質
+
+👉 機能ではなく習慣
