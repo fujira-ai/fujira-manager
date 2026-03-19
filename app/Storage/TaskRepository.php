@@ -11,7 +11,7 @@ final class TaskRepository
 
     public function getOpenTasksByOwner(int $ownerId, string $today, string $tomorrow): array
     {
-        $sql = 'SELECT id, title, due_date, due_time FROM tasks WHERE owner_id = :owner_id AND status = :status ORDER BY CASE WHEN due_date IS NULL THEN 3 WHEN due_date = :today THEN 0 WHEN due_date = :tomorrow THEN 1 ELSE 2 END, due_date ASC, CASE WHEN due_time IS NULL OR due_time = \'\' THEN 1 ELSE 0 END, due_time ASC, id DESC LIMIT 10';
+        $sql = 'SELECT id, title, due_date, due_time FROM tasks WHERE owner_id = :owner_id AND status = :status ORDER BY CASE WHEN due_date IS NULL THEN 3 WHEN due_date = :today THEN 0 WHEN due_date = :tomorrow THEN 1 ELSE 2 END, due_date ASC, CASE WHEN due_time IS NULL OR due_time = \'\' THEN 1 ELSE 0 END, due_time ASC, id DESC';
         $stmt = $this->db->pdo()->prepare($sql);
         $stmt->execute(['owner_id' => $ownerId, 'status' => 'open', 'today' => $today, 'tomorrow' => $tomorrow]);
         return $stmt->fetchAll();

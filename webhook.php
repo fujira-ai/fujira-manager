@@ -93,6 +93,80 @@ function line_reply(string $replyToken, string $message): void
 
 /*
 |--------------------------------------------------------------------------
+| Task list page renderer
+|--------------------------------------------------------------------------
+*/
+function render_task_list_page(
+    array $allTasks,
+    int $page,
+    string $listToday,
+    string $listTomorrow
+): string {
+    $pageSize   = 10;
+    $total      = count($allTasks);
+    $totalPages = max(1, (int) ceil($total / $pageSize));
+    $page       = max(1, min($page, $totalPages));
+    $offset     = ($page - 1) * $pageSize;
+    $pageTasks  = array_slice($allTasks, $offset, $pageSize);
+
+    $groupLabels = [
+        'today'    => '■ 今日',
+        'tomorrow' => '■ 明日',
+        'other'    => '■ その他',
+        'none'     => '■ 期限なし',
+    ];
+
+    $header = ($totalPages > 1)
+        ? '未完了タスク一覧（' . $page . '/' . $totalPages . '）'
+        : '現在のタスク:';
+
+    $lines        = [$header];
+    $currentGroup = null;
+
+    foreach ($pageTasks as $idx => $t) {
+        $num = $offset + $idx + 1;
+
+        if (empty($t['due_date'])) {
+            $group = 'none';
+        } elseif ($t['due_date'] === $listToday) {
+            $group = 'today';
+        } elseif ($t['due_date'] === $listTomorrow) {
+            $group = 'tomorrow';
+        } else {
+            $group = 'other';
+        }
+
+        if ($group !== $currentGroup) {
+            $currentGroup = $group;
+            $lines[]      = '';
+            $lines[]      = $groupLabels[$group];
+        }
+
+        $line = $num . '. ' . $t['title'];
+        if ($group === 'today' || $group === 'tomorrow') {
+            if (!empty($t['due_time'])) {
+                $line .= '（' . $t['due_time'] . '）';
+            }
+        } elseif ($group === 'other') {
+            if (!empty($t['due_time'])) {
+                $line .= '（' . $t['due_date'] . ' ' . $t['due_time'] . '）';
+            } else {
+                $line .= '（' . $t['due_date'] . '）';
+            }
+        }
+        $lines[] = $line;
+    }
+
+    if ($page < $totalPages) {
+        $lines[] = '';
+        $lines[] = '続きがあります。「次」で' . ($offset + $pageSize + 1) . '件目以降を表示できます。';
+    }
+
+    return implode("\n", $lines);
+}
+
+/*
+|--------------------------------------------------------------------------
 | Browser direct access test
 |--------------------------------------------------------------------------
 */
@@ -330,60 +404,23 @@ foreach ($data['events'] as $event) {
                 $tz           = new DateTimeZone('Asia/Tokyo');
                 $listToday    = (new DateTime('now', $tz))->format('Y-m-d');
                 $listTomorrow = (new DateTime('tomorrow', $tz))->format('Y-m-d');
-                $tasks = $taskRepo->getOpenTasksByOwner($ownerId, $listToday, $listTomorrow);
-                if (!empty($tasks)) {
-                    $map          = [];
-                    $counter      = 1;
-                    $lines        = ['現在のタスク:'];
-                    $currentGroup = null;
-                    $groupLabels  = [
-                        'today'    => '■ 今日',
-                        'tomorrow' => '■ 明日',
-                        'other'    => '■ その他',
-                        'none'     => '■ 期限なし',
-                    ];
-
-                    foreach ($tasks as $t) {
-                        if (empty($t['due_date'])) {
-                            $group = 'none';
-                        } elseif ($t['due_date'] === $listToday) {
-                            $group = 'today';
-                        } elseif ($t['due_date'] === $listTomorrow) {
-                            $group = 'tomorrow';
-                        } else {
-                            $group = 'other';
-                        }
-
-                        if ($group !== $currentGroup) {
-                            $currentGroup = $group;
-                            $lines[] = '';
-                            $lines[] = $groupLabels[$group];
-                        }
-
-                        $num = $counter++;
-                        $map[(string)$num] = (int)$t['id'];
-
-                        $line = $num . '. ' . $t['title'];
-                        if ($group === 'today' || $group === 'tomorrow') {
-                            if (!empty($t['due_time'])) {
-                                $line .= '（' . $t['due_time'] . '）';
-                            }
-                        } elseif ($group === 'other') {
-                            if (!empty($t['due_time'])) {
-                                $line .= '（' . $t['due_date'] . ' ' . $t['due_time'] . '）';
-                            } else {
-                                $line .= '（' . $t['due_date'] . '）';
-                            }
-                        }
-                        $lines[] = $line;
+                $allTasks     = $taskRepo->getOpenTasksByOwner($ownerId, $listToday, $listTomorrow);
+                if (!empty($allTasks)) {
+                    $map = [];
+                    foreach ($allTasks as $i => $t) {
+                        $map[(string)($i + 1)] = (int) $t['id'];
                     }
-                    $replyText = implode("\n", $lines);
+                    $page      = 1;
+                    $replyText = render_task_list_page($allTasks, $page, $listToday, $listTomorrow);
 
                     if ($convStateRepo !== null) {
-                        webhook_log('list map save attempt', ['owner_id' => $ownerId, 'map' => $map]);
+                        webhook_log('list map save attempt', ['owner_id' => $ownerId, 'total' => count($allTasks)]);
                         try {
-                            $state = $convStateRepo->getState($ownerId);
-                            $state['last_task_list_map'] = $map;
+                            $state                        = $convStateRepo->getState($ownerId);
+                            $state['last_task_list_map']  = $map;
+                            $state['last_list_page']      = $page;
+                            $state['last_list_today']     = $listToday;
+                            $state['last_list_tomorrow']  = $listTomorrow;
                             $convStateRepo->saveState($ownerId, $state);
                             webhook_log('list map save result', ['owner_id' => $ownerId, 'saved' => true]);
                         } catch (\Throwable $e) {
@@ -394,6 +431,87 @@ foreach ($data['events'] as $event) {
             } catch (\Throwable $e) {
                 webhook_log('task list failed', ['error' => $e->getMessage()]);
                 $replyText = 'タスク取得に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
+    // Next page command
+    if ($text === '次' || $text === '/next') {
+        $replyText = '先に「一覧」を表示してから「次」を使ってください';
+        if ($ownerId !== null && $taskRepo !== null && $convStateRepo !== null) {
+            try {
+                $state        = $convStateRepo->getState($ownerId);
+                $currentPage  = (int) ($state['last_list_page'] ?? 0);
+                $lastToday    = $state['last_list_today'] ?? null;
+                $lastTomorrow = $state['last_list_tomorrow'] ?? null;
+
+                if ($currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
+                    $allTasks   = $taskRepo->getOpenTasksByOwner($ownerId, $lastToday, $lastTomorrow);
+                    $pageSize   = 10;
+                    $totalPages = max(1, (int) ceil(count($allTasks) / $pageSize));
+
+                    if ($currentPage >= $totalPages) {
+                        $replyText = 'これが最後のページです。';
+                    } else {
+                        $newPage = $currentPage + 1;
+                        $map     = [];
+                        foreach ($allTasks as $i => $t) {
+                            $map[(string)($i + 1)] = (int) $t['id'];
+                        }
+                        $replyText = render_task_list_page($allTasks, $newPage, $lastToday, $lastTomorrow);
+
+                        $state['last_task_list_map'] = $map;
+                        $state['last_list_page']     = $newPage;
+                        $convStateRepo->saveState($ownerId, $state);
+                    }
+                    webhook_log('next page', ['owner_id' => $ownerId, 'page' => $currentPage, 'total_pages' => $totalPages]);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('next page failed', ['error' => $e->getMessage()]);
+                $replyText = 'ページ表示に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
+    // Previous page command
+    if ($text === '前' || $text === '/prev') {
+        $replyText = '先に「一覧」を表示してから「前」を使ってください';
+        if ($ownerId !== null && $taskRepo !== null && $convStateRepo !== null) {
+            try {
+                $state        = $convStateRepo->getState($ownerId);
+                $currentPage  = (int) ($state['last_list_page'] ?? 0);
+                $lastToday    = $state['last_list_today'] ?? null;
+                $lastTomorrow = $state['last_list_tomorrow'] ?? null;
+
+                if ($currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
+                    if ($currentPage <= 1) {
+                        $replyText = 'これが最初のページです。';
+                    } else {
+                        $allTasks = $taskRepo->getOpenTasksByOwner($ownerId, $lastToday, $lastTomorrow);
+                        $newPage  = $currentPage - 1;
+                        $map      = [];
+                        foreach ($allTasks as $i => $t) {
+                            $map[(string)($i + 1)] = (int) $t['id'];
+                        }
+                        $replyText = render_task_list_page($allTasks, $newPage, $lastToday, $lastTomorrow);
+
+                        $state['last_task_list_map'] = $map;
+                        $state['last_list_page']     = $newPage;
+                        $convStateRepo->saveState($ownerId, $state);
+                    }
+                    webhook_log('prev page', ['owner_id' => $ownerId, 'page' => $currentPage]);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('prev page failed', ['error' => $e->getMessage()]);
+                $replyText = 'ページ表示に失敗しました';
             }
         }
         if ($replyToken !== '') {
@@ -629,6 +747,10 @@ foreach ($data['events'] as $event) {
     // Save task
     $isCommand = ($text === '一覧'
         || $text === '/list'
+        || $text === '次'
+        || $text === '/next'
+        || $text === '前'
+        || $text === '/prev'
         || $text === '履歴'
         || $text === '/history'
         || $text === 'help'
