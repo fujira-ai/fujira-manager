@@ -163,7 +163,11 @@ function render_task_list_page(
         $lines[] = '';
         $lines[] = '■ 期限なし（' . count($groups['none']) . '件）';
         foreach ($groups['none'] as $e) {
-            $lines[] = $e['num'] . '. ' . $e['task']['title'];
+            $line = $e['num'] . '. ' . $e['task']['title'];
+            if (!empty($e['task']['due_time'])) {
+                $line .= '（' . $e['task']['due_time'] . '）';
+            }
+            $lines[] = $line;
         }
     }
 
@@ -818,22 +822,40 @@ foreach ($data['events'] as $event) {
     }
 
     if (!$isCommand && $ownerId !== null && $taskRepo !== null && $text !== '') {
-        // Detect prefix-only inputs with no content (e.g. "今日は", "明日の")
-        if (preg_match('/^(?:今日|明日)(?:[ 　]+|の|は)?[ 　]*$/u', $text)) {
+        // Detect prefix-only inputs with no content (e.g. "今日は", "3月20日")
+        if (preg_match('/^(?:今日|明日)(?:[ 　]+|の|は)?[ 　]*$/u', $text)
+            || preg_match('/^\d{1,2}月\d{1,2}日[ 　]*$/u', $text)
+            || preg_match('/^\d{1,2}\/\d{1,2}[ 　]*$/u', $text)) {
             webhook_log('task skipped: empty title after prefix strip', ['text' => $text, 'owner_id' => $ownerId]);
             if ($replyToken !== '') {
-                line_reply($replyToken, '内容を入力してください');
+                line_reply($replyToken, implode("\n", [
+                    '内容を入力してください。',
+                    '',
+                    '例：',
+                    '「今日 13:30 歯医者」',
+                    '「明日 税理士に連絡」',
+                    '「請求書確認」',
+                ]));
             }
             continue;
         }
 
         // Parse due_date from natural Japanese date prefixes
+        // Order: specific → general (M月D日 / M/D before 今日 / 明日)
         $dueDate   = null;
         $dueTime   = null;
         $saveTitle = $text;
         $tz        = new DateTimeZone('Asia/Tokyo');
 
-        if (preg_match('/^今日(?:[ 　]+|の|は)(.+)$/u', $text, $dm)) {
+        if (preg_match('/^(\d{1,2})月(\d{1,2})日(?:[ 　]+|の)(.+)$/u', $text, $dm)) {
+            $saveTitle = trim($dm[3]);
+            $year      = (int) (new DateTime('now', $tz))->format('Y');
+            $dueDate   = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
+        } elseif (preg_match('/^(\d{1,2})\/(\d{1,2})[ 　]+(.+)$/u', $text, $dm)) {
+            $saveTitle = trim($dm[3]);
+            $year      = (int) (new DateTime('now', $tz))->format('Y');
+            $dueDate   = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
+        } elseif (preg_match('/^今日(?:[ 　]+|の|は)(.+)$/u', $text, $dm)) {
             $saveTitle = trim($dm[1]);
             $dueDate   = (new DateTime('now', $tz))->format('Y-m-d');
         } elseif (preg_match('/^明日(?:[ 　]+|の|は)(.+)$/u', $text, $dm)) {
@@ -841,25 +863,51 @@ foreach ($data['events'] as $event) {
             $d = new DateTime('now', $tz);
             $d->modify('+1 day');
             $dueDate = $d->format('Y-m-d');
-        } elseif (preg_match('/^(\d{1,2})月(\d{1,2})日[ 　]+(.+)$/u', $text, $dm)) {
-            $saveTitle = trim($dm[3]);
-            $year      = (int) (new DateTime('now', $tz))->format('Y');
-            $dueDate   = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
         }
 
-        // Parse due_time from the start of saveTitle
+        // Parse due_time from the start of saveTitle (leading time: C / A / B patterns)
+        // Separator (space / に / から / の) is absorbed into the pattern
+        $timePattern = 'no_match';
         if ($saveTitle !== '') {
-            if (preg_match('/^(\d{1,2}:\d{2})[ 　]*(.*)$/u', $saveTitle, $tm)) {
-                $dueTime   = $tm[1];
-                $saveTitle = trim(preg_replace('/^(?:に|から)/u', '', $tm[2]));
-            } elseif (preg_match('/^(\d{1,2}時半)[ 　]*(.*)$/u', $saveTitle, $tm)) {
-                $dueTime   = $tm[1];
-                $saveTitle = trim(preg_replace('/^(?:に|から)/u', '', $tm[2]));
-            } elseif (preg_match('/^(\d{1,2}時)[ 　]*(.*)$/u', $saveTitle, $tm)) {
-                $dueTime   = $tm[1];
-                $saveTitle = trim(preg_replace('/^(?:に|から)/u', '', $tm[2]));
+            if (preg_match('/^(\d{1,2}:\d{2})(?:[ 　]+|に|から|の)(.+)$/u', $saveTitle, $tm)) {
+                $dueTime     = $tm[1];
+                $saveTitle   = trim($tm[2]);
+                $timePattern = 'leading_hhmm';
+            } elseif (preg_match('/^(\d{1,2}時(?:半)?)(?:[ 　]+|に|から|の)(.+)$/u', $saveTitle, $tm)) {
+                $dueTime     = $tm[1];
+                $saveTitle   = trim($tm[2]);
+                $timePattern = 'leading_ji';
             }
         }
+
+        // Parse trailing time (title + time word order: D pattern)
+        // Only when date is set and time not yet found
+        if ($dueDate !== null && $dueTime === null && $saveTitle !== '') {
+            if (preg_match('/^(.+?)[ 　]+(\d{1,2}:\d{2})$/u', $saveTitle, $tm)) {
+                $saveTitle   = trim($tm[1]);
+                $dueTime     = $tm[2];
+                $timePattern = 'trailing_hhmm';
+            } elseif (preg_match('/^(.+?)[ 　]+(\d{1,2}時半)$/u', $saveTitle, $tm)) {
+                $saveTitle   = trim($tm[1]);
+                $dueTime     = $tm[2];
+                $timePattern = 'trailing_ji_han';
+            } elseif (preg_match('/^(.+?)[ 　]+(\d{1,2}時)$/u', $saveTitle, $tm)) {
+                $saveTitle   = trim($tm[1]);
+                $dueTime     = $tm[2];
+                $timePattern = 'trailing_ji';
+            }
+        }
+
+        // Strip any remaining leading の from title
+        $saveTitle = trim(preg_replace('/^の/u', '', $saveTitle));
+
+        // Pre-save diagnostic log
+        webhook_log('task parse result', [
+            'pattern'  => $timePattern,
+            'title'    => $saveTitle,
+            'due_date' => $dueDate,
+            'due_time' => $dueTime,
+        ]);
 
         if ($saveTitle === '') {
             webhook_log('task skipped: empty title after prefix strip', ['text' => $text, 'owner_id' => $ownerId]);
@@ -889,6 +937,8 @@ foreach ($data['events'] as $event) {
                     } else {
                         $msg .= "\n期限：" . $dateLbl;
                     }
+                } elseif ($dueTime !== null) {
+                    $msg .= "\n時刻：" . $dueTime;
                 }
                 line_reply($replyToken, $msg);
             }
