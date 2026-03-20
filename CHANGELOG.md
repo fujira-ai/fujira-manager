@@ -4,6 +4,16 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.8-dev - 2026-03-20
+
+### Changed
+- 「今日」コマンドの挨拶を時間帯に応じて出し分けるよう改善
+  05:00〜10:59: おはようございます
+  11:00〜17:59: こんにちは
+  18:00〜04:59: こんばんは
+
+---
+
 ## v1.1.7-dev - 2026-03-20
 
 ### Added

@@ -765,13 +765,23 @@ foreach ($data['events'] as $event) {
 
     // Today command ("今日" alone — "今日 XXX" goes to task save)
     if ($text === '今日' || $text === '/today') {
-        $replyText = '今日が期限のタスクはありません';
+        $nowJst   = new DateTime('now', new DateTimeZone('Asia/Tokyo'));
+        $hour     = (int) $nowJst->format('H');
+        if ($hour >= 5 && $hour < 11) {
+            $greeting = 'おはようございます。';
+        } elseif ($hour < 18) {
+            $greeting = 'こんにちは。';
+        } else {
+            $greeting = 'こんばんは。';
+        }
+
+        $replyText = $greeting . "\n\n今日が期限のタスクはありません";
         if ($ownerId !== null && $taskRepo !== null) {
             try {
-                $today      = (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('Y-m-d');
+                $today      = $nowJst->format('Y-m-d');
                 $todayTasks = $taskRepo->getTodayTasksByOwner($ownerId, $today);
                 if (!empty($todayTasks)) {
-                    $lines = ['今日のタスク:'];
+                    $lines = [$greeting, '', '今日のタスク:'];
                     foreach ($todayTasks as $i => $t) {
                         $lines[] = ($i + 1) . '. ' . $t['title'];
                     }
