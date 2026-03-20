@@ -668,7 +668,8 @@ foreach ($data['events'] as $event) {
                     }
 
                     $remaining = $taskRepo->countOpenTasksByOwner($ownerId);
-                    $replyText = '✅ 完了：' . $done['title'] . $suffix . "\n残り" . $remaining . '件です。';
+                    $replyText = "ナイスです。\n・" . $done['title'] . $suffix . " を完了しました。\n\n"
+                        . ($remaining > 0 ? "残り{$remaining}件です。" : '今のタスクは0件です。');
                     webhook_log('task completed', ['owner_id' => $ownerId, 'task_id' => $taskId]);
                 }
             } catch (\Throwable $e) {

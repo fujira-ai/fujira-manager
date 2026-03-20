@@ -4,6 +4,14 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.9-dev - 2026-03-20
+
+### Changed
+- タスク完了時の返信文を改善し、完了したタスクと残件数が自然に分かるよう調整
+- 残件数が0件の場合は「今のタスクは0件です。」と表示するよう改善
+
+---
+
 ## v1.1.8-dev - 2026-03-20
 
 ### Changed
