@@ -102,64 +102,77 @@ function render_task_list_page(
     string $listToday,
     string $listTomorrow
 ): string {
-    $pageSize   = 10;
+    $pageSize   = 5;
     $total      = count($allTasks);
     $totalPages = max(1, (int) ceil($total / $pageSize));
     $page       = max(1, min($page, $totalPages));
     $offset     = ($page - 1) * $pageSize;
     $pageTasks  = array_slice($allTasks, $offset, $pageSize);
 
-    $groupLabels = [
-        'today'    => '■ 今日',
-        'tomorrow' => '■ 明日',
-        'other'    => '■ その他',
-        'none'     => '■ 期限なし',
-    ];
-
-    $header = ($totalPages > 1)
-        ? '未完了タスク一覧（' . $page . '/' . $totalPages . '）'
-        : '現在のタスク:';
-
-    $lines        = [$header];
-    $currentGroup = null;
-
+    // Group tasks on this page (today / 直近 / 期限なし)
+    // tomorrow + other are merged into 直近の予定
+    $groups = ['today' => [], 'kinsetsu' => [], 'none' => []];
     foreach ($pageTasks as $idx => $t) {
         $num = $offset + $idx + 1;
-
         if (empty($t['due_date'])) {
-            $group = 'none';
+            $groups['none'][] = ['num' => $num, 'task' => $t];
         } elseif ($t['due_date'] === $listToday) {
-            $group = 'today';
-        } elseif ($t['due_date'] === $listTomorrow) {
-            $group = 'tomorrow';
+            $groups['today'][] = ['num' => $num, 'task' => $t];
         } else {
-            $group = 'other';
+            $groups['kinsetsu'][] = ['num' => $num, 'task' => $t];
         }
+    }
 
-        if ($group !== $currentGroup) {
-            $currentGroup = $group;
-            $lines[]      = '';
-            $lines[]      = $groupLabels[$group];
-        }
+    $header = '未完了タスク一覧（' . $page . '/' . $totalPages . '）';
+    $lines = [$header];
 
-        $line = $num . '. ' . $t['title'];
-        if ($group === 'today' || $group === 'tomorrow') {
+    // ■ 今日
+    if (!empty($groups['today'])) {
+        $lines[] = '';
+        $lines[] = '■ 今日（' . count($groups['today']) . '件）';
+        foreach ($groups['today'] as $e) {
+            $t    = $e['task'];
+            $line = $e['num'] . '. ' . $t['title'];
             if (!empty($t['due_time'])) {
                 $line .= '（' . $t['due_time'] . '）';
             }
-        } elseif ($group === 'other') {
-            if (!empty($t['due_time'])) {
-                $line .= '（' . $t['due_date'] . ' ' . $t['due_time'] . '）';
-            } else {
-                $line .= '（' . $t['due_date'] . '）';
-            }
+            $lines[] = $line;
         }
-        $lines[] = $line;
     }
 
-    if ($page < $totalPages) {
+    // ■ 今後の予定（明日以降の期日あり）
+    if (!empty($groups['kinsetsu'])) {
         $lines[] = '';
-        $lines[] = '続きがあります。「次」で' . ($offset + $pageSize + 1) . '件目以降を表示できます。';
+        $lines[] = '■ 今後の予定（' . count($groups['kinsetsu']) . '件）';
+        foreach ($groups['kinsetsu'] as $e) {
+            $t         = $e['task'];
+            $d         = new DateTime($t['due_date']);
+            $dateLabel = $d->format('n') . '/' . $d->format('j');
+            $line      = $e['num'] . '. ' . $t['title'];
+            if (!empty($t['due_time'])) {
+                $line .= '（' . $dateLabel . ' ' . $t['due_time'] . '）';
+            } else {
+                $line .= '（' . $dateLabel . '）';
+            }
+            $lines[] = $line;
+        }
+    }
+
+    // ■ 期限なし
+    if (!empty($groups['none'])) {
+        $lines[] = '';
+        $lines[] = '■ 期限なし（' . count($groups['none']) . '件）';
+        foreach ($groups['none'] as $e) {
+            $lines[] = $e['num'] . '. ' . $e['task']['title'];
+        }
+    }
+
+    // Action footer
+    $firstNum = $offset + 1;
+    $lines[]  = '';
+    $lines[]  = '→ 完了する場合：「完了 ' . $firstNum . '」';
+    if ($page < $totalPages) {
+        $lines[] = '→ 続きを見る：「次」';
     }
 
     return implode("\n", $lines);
@@ -490,7 +503,7 @@ foreach ($data['events'] as $event) {
 
                 if ($currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
                     $allTasks   = $taskRepo->getOpenTasksByOwner($ownerId, $lastToday, $lastTomorrow);
-                    $pageSize   = 10;
+                    $pageSize   = 5;
                     $totalPages = max(1, (int) ceil(count($allTasks) / $pageSize));
 
                     if ($currentPage >= $totalPages) {

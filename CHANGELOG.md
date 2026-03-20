@@ -4,6 +4,16 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v0.35 - 2026-03-20
+
+### Changed
+- 一覧表示を最大5件に整理し、1ページ目の情報量を削減
+- 一覧の見出しを「今日」「今後の予定」「期限なし」で分かりやすく調整
+- 一覧ヘッダーを「未完了タスク一覧（N/M）」形式に統一
+- 一覧の末尾に完了・次ページへの行動導線を追加
+
+---
+
 ## v0.34 - 2026-03-20
 
 ### Fixed
@@ -12,11 +22,11 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
-## v0.33.1 — 2026-03-20
+## v0.33.1 - 2026-03-20
 
-### Changed
-- cron/push_onboarding_followup.php に全条件の診断ログを追加。
-  skip 理由・push 試行前後・集計を出力するようにした（条件変更なし）。
+### Internal
+- cron/push_onboarding_followup.php に全条件の診断ログを追加
+  skip理由・push試行前後・集計を出力するようにした（条件変更なし）
 
 ---
 
@@ -24,8 +34,8 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ### Added
 - 友だち追加時に送るオンボーディングメッセージを追加
-- follow イベントでユーザー登録と onboarding 状態の conv_state 保存を追加
-- タスク未登録ユーザーに1時間後フォローアップを1回だけ送る cron を追加h
+- followイベントでユーザー登録とonboarding状態のconv_state保存を追加
+- タスク未登録ユーザーに1時間後フォローアップを1回だけ送るcronを追加
 
 ---
 
@@ -44,8 +54,8 @@ All notable changes to Fujira Manager will be documented in this file.
 ## v0.31 - 2026-03-19
 
 ### Fixed
-- 「3月27日 家賃引落確認」のような M月D日 形式の入力が期限なしとして登録されていた問題を修正
-- M月D日 形式の入力から due_date を当年日付として正しく保存するよう改善
+- 「3月27日 家賃引落確認」のようなM月D日形式の入力が期限なしとして登録されていた問題を修正
+- M月D日形式の入力からdue_dateを当年日付として正しく保存するよう改善
 
 ### Changed
 - タスク登録確認メッセージで、時間未設定でも期限日を表示するよう変更
@@ -78,7 +88,7 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ### Changed
 - 朝のbrief通知を、件数と一覧が分かる形式に改善
-- 明日のタスク取得処理で `due_time` を扱えるようにし、時間ありタスクが先に並ぶよう調整
+- 明日のタスク取得処理でdue_timeを扱えるようにし、時間ありタスクが先に並ぶよう調整
 - 通知文面を自然で簡潔な日本語に調整
 
 ---
@@ -86,7 +96,7 @@ All notable changes to Fujira Manager will be documented in this file.
 ## v0.27 - 2026-03-18
 
 ### Added
-- 完了後の残件数表示用に `countOpenTasksByOwner()` を追加
+- 完了後の残件数表示用にcountOpenTasksByOwner()を追加
 
 ### Changed
 - タスク一覧を「今日 / 明日 / その他 / 期限なし」で整理し、見やすさを改善
@@ -110,7 +120,7 @@ All notable changes to Fujira Manager will be documented in this file.
 ## v0.26-due-time-display
 
 ### Changed
-- open task list now includes `due_date` / `due_time` context when available
+- open task list now includes due_date / due_time context when available
 - task creation confirmation now shows due date and time when available
 
 ### Result
@@ -123,12 +133,11 @@ Users can more easily understand when time-based tasks are scheduled
 ### Fixed
 - prevented fallback response after successful task creation
 - task creation now replies with a registration confirmation
-- `isCommand` narrowed to pure non-task commands only
-- `/ping` and brief toggle handlers moved before task-save flow
+- isCommand narrowed to pure non-task commands only
+- /ping and brief toggle handlers moved before task-save flow
 
 ### Result
 Natural task input now registers cleanly without falling through to echo-style fallback responses
-
 
 ---
 
@@ -188,7 +197,7 @@ Daily brief is easier to scan and closer to real execution order
 ## v0.20-task-due-time
 
 ### Added
-- `tasks.due_time` column
+- tasks.due_time column
 - minimal time parsing for inputs such as `23時`, `23時半`, `13:30`
 
 ### Fixed
@@ -225,13 +234,13 @@ Users can enter date-prefixed tasks in more natural Japanese
 ## v0.18-brief-toggle
 
 ### Added
-- `users.brief_enabled` column
-- `UserRepository::getAllBriefEnabledUsers(): array`
-- `UserRepository::updateBriefEnabled(int $ownerId, int $enabled): void`
+- users.brief_enabled column
+- UserRepository::getAllBriefEnabledUsers(): array
+- UserRepository::updateBriefEnabled(int $ownerId, int $enabled): void
 - LINE commands `brief on` / `brief off` / `ブリーフオン` / `ブリーフオフ`
 
 ### Changed
-- morning brief cron now targets only users with `brief_enabled = 1`
+- morning brief cron now targets only users with brief_enabled = 1
 
 ### Result
 Users can now control whether they receive morning brief pushes
@@ -241,9 +250,9 @@ Users can now control whether they receive morning brief pushes
 ## v0.17-morning-brief-push
 
 ### Added
-- `UserRepository::getAllUsers(): array`
-- `LineService::pushMessage(string $lineUserId, string $message): void`
-- `cron/push_morning_brief.php`
+- UserRepository::getAllUsers(): array
+- LineService::pushMessage(string $lineUserId, string $message): void
+- cron/push_morning_brief.php
 
 ### Result
 Users can now receive automatic morning brief messages via LINE Push
@@ -253,12 +262,12 @@ Users can now receive automatic morning brief messages via LINE Push
 ## v0.16-brief-view
 
 ### Added
-- TaskRepository: `getNoDueDateTasksByOwner(int $ownerId): array`
-- webhook: `/brief` / `ブリーフ` で今日の期限タスク＋未期限タスクをまとめて表示する brief 機能を追加
+- TaskRepository: getNoDueDateTasksByOwner(int $ownerId): array
+- webhook: `/brief` / `ブリーフ` で今日の期限タスク＋未期限タスクをまとめて表示するbrief機能を追加
 
 ### Changed
 - webhook: `/brief` のテスト用スタブを本実装に置き換え
-- webhook: isCommand に `ブリーフ` を追加
+- webhook: isCommandに`ブリーフ`を追加
 
 ### Result
 Users can now review a compact daily brief from LINE
