@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.2-dev - 2026-03-20
+
+### Added
+- `3月20日` / `3/20` のような日付単独入力で、その日の予定を確認できる指定日検索を追加
+- TaskRepository に `getOpenTasksByDate(int $ownerId, string $date): array` を追加
+
+### Changed
+- 日付単独入力を内容不足エラーではなく検索として扱うよう変更
+
+---
+
 ## v1.1.1-dev - 2026-03-20
 
 ### Fixed

@@ -800,6 +800,40 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
+    // Date search: "M月D日" or "M/D" alone → return open tasks for that date
+    if (preg_match('/^(\d{1,2})月(\d{1,2})日[ 　]*$/u', $text, $dm)
+        || preg_match('/^(\d{1,2})\/(\d{1,2})[ 　]*$/u', $text, $dm)) {
+        $tz    = new DateTimeZone('Asia/Tokyo');
+        $year  = (int) (new DateTime('now', $tz))->format('Y');
+        $date  = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
+        $label = (int) $dm[1] . '/' . (int) $dm[2];
+        $msg   = $label . ' の予定はありません。';
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $tasks = $taskRepo->getOpenTasksByDate($ownerId, $date);
+                if (!empty($tasks)) {
+                    $lines = [$label . ' の予定（' . count($tasks) . '件）', ''];
+                    foreach ($tasks as $i => $t) {
+                        $line = ($i + 1) . '. ' . $t['title'];
+                        if (!empty($t['due_time'])) {
+                            $line .= '（' . $t['due_time'] . '）';
+                        }
+                        $lines[] = $line;
+                    }
+                    $msg = implode("\n", $lines);
+                }
+                webhook_log('date search', ['owner_id' => $ownerId, 'date' => $date, 'count' => count($tasks)]);
+            } catch (\Throwable $e) {
+                webhook_log('date search failed', ['owner_id' => $ownerId, 'date' => $date, 'error' => $e->getMessage()]);
+                $msg = '検索に失敗しました。';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $msg);
+        }
+        continue;
+    }
+
     // Save task
     $isCommand = ($text === '一覧'
         || $text === '/list'
@@ -822,10 +856,8 @@ foreach ($data['events'] as $event) {
     }
 
     if (!$isCommand && $ownerId !== null && $taskRepo !== null && $text !== '') {
-        // Detect prefix-only inputs with no content (e.g. "今日は", "3月20日")
-        if (preg_match('/^(?:今日|明日)(?:[ 　]+|の|は)?[ 　]*$/u', $text)
-            || preg_match('/^\d{1,2}月\d{1,2}日[ 　]*$/u', $text)
-            || preg_match('/^\d{1,2}\/\d{1,2}[ 　]*$/u', $text)) {
+        // Detect prefix-only inputs with no content (e.g. "今日は", "明日の")
+        if (preg_match('/^(?:今日|明日)(?:[ 　]+|の|は)?[ 　]*$/u', $text)) {
             webhook_log('task skipped: empty title after prefix strip', ['text' => $text, 'owner_id' => $ownerId]);
             if ($replyToken !== '') {
                 line_reply($replyToken, implode("\n", [
