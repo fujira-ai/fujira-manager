@@ -31,11 +31,31 @@ function cron_log(string $message, array $context = []): void
 | Midday message builder
 |--------------------------------------------------------------------------
 */
-function build_midday_message(array $todayTasks, array $noneTasks): string
+function build_midday_message(array $todayTasks, array $tomorrowTasks, array $noneTasks): string
 {
-    // Priority: today with due_time ASC → today without due_time → no-date
-    // $todayTasks is already sorted by getTodayTasksByOwner (due_time あり先・ASC)
-    $pending = array_merge($todayTasks, $noneTasks);
+    // Group classification — within each group SQL already sorted (due_time ASC)
+    $todayWithTime    = [];
+    $todayNoTime      = [];
+    $tomorrowWithTime = [];
+    $tomorrowNoTime   = [];
+
+    foreach ($todayTasks as $t) {
+        if (!empty($t['due_time'])) {
+            $todayWithTime[] = $t;
+        } else {
+            $todayNoTime[] = $t;
+        }
+    }
+    foreach ($tomorrowTasks as $t) {
+        if (!empty($t['due_time'])) {
+            $tomorrowWithTime[] = $t;
+        } else {
+            $tomorrowNoTime[] = $t;
+        }
+    }
+
+    // Priority order: today_with_time → today_no_time → tomorrow_with_time → tomorrow_no_time → no_due
+    $pending = array_merge($todayWithTime, $todayNoTime, $tomorrowWithTime, $tomorrowNoTime, $noneTasks);
     $total   = count($pending);
 
     $sections = [
@@ -87,22 +107,27 @@ try {
 $users = $userRepo->getAllBriefEnabledUsers();
 cron_log('midday brief user count', ['count' => count($users)]);
 
-$today = (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('Y-m-d');
+$tz       = new DateTimeZone('Asia/Tokyo');
+$today    = (new DateTime('now', $tz))->format('Y-m-d');
+$d        = new DateTime('now', $tz);
+$d->modify('+1 day');
+$tomorrow = $d->format('Y-m-d');
 
 foreach ($users as $user) {
     $ownerId    = (int) $user['id'];
     $lineUserId = (string) $user['line_user_id'];
 
     try {
-        $todayTasks = $taskRepo->getTodayTasksByOwner($ownerId, $today);
-        $noneTasks  = $taskRepo->getNoDueDateTasksByOwner($ownerId);
+        $todayTasks    = $taskRepo->getTodayTasksByOwner($ownerId, $today);
+        $tomorrowTasks = $taskRepo->getTomorrowTasksByOwner($ownerId, $tomorrow);
+        $noneTasks     = $taskRepo->getNoDueDateTasksByOwner($ownerId);
 
-        if (empty($todayTasks) && empty($noneTasks)) {
+        if (empty($todayTasks) && empty($tomorrowTasks) && empty($noneTasks)) {
             cron_log('midday brief skipped (no tasks)', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
             continue;
         }
 
-        $message = build_midday_message($todayTasks, $noneTasks);
+        $message = build_midday_message($todayTasks, $tomorrowTasks, $noneTasks);
         $line->pushMessage($lineUserId, $message);
         cron_log('midday brief sent', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
     } catch (\Throwable $e) {

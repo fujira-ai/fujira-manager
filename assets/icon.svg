@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background gradient: light blue → white -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#C8E6FA"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+
+    <!-- Face gradient: white with subtle blue tint -->
+    <linearGradient id="faceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E8F4FD"/>
+    </linearGradient>
+
+    <!-- Eye gradient -->
+    <radialGradient id="eyeGrad" cx="35%" cy="35%" r="60%">
+      <stop offset="0%"   stop-color="#5BB8F5"/>
+      <stop offset="100%" stop-color="#1A7DC4"/>
+    </radialGradient>
+
+    <!-- Antenna gradient -->
+    <linearGradient id="antennaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#5BB8F5"/>
+      <stop offset="100%" stop-color="#1A7DC4"/>
+    </linearGradient>
+
+    <!-- Drop shadow -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#1A7DC4" flood-opacity="0.15"/>
+    </filter>
+
+    <!-- Eye glow -->
+    <filter id="eyeGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background: rounded square -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bgGrad)"/>
+
+  <!-- Subtle background ring (decorative) -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#1A7DC4" stroke-width="1.5" opacity="0.08"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#1A7DC4" stroke-width="1" opacity="0.05"/>
+
+  <!-- Antenna stem -->
+  <rect x="248" y="98" width="16" height="52" rx="8" fill="url(#antennaGrad)"/>
+
+  <!-- Antenna orb -->
+  <circle cx="256" cy="90" r="22" fill="url(#antennaGrad)" filter="url(#shadow)"/>
+  <circle cx="248" cy="83" r="6" fill="white" opacity="0.55"/>
+
+  <!-- Face body (rounded rectangle) -->
+  <rect x="120" y="148" width="272" height="256" rx="64" ry="64"
+        fill="url(#faceGrad)" stroke="#1A7DC4" stroke-width="6"
+        filter="url(#shadow)"/>
+
+  <!-- Left eye socket (recessed ring) -->
+  <circle cx="187" cy="264" r="48" fill="#E8F4FD" stroke="#1A7DC4" stroke-width="3" opacity="0.4"/>
+  <!-- Left eye -->
+  <circle cx="187" cy="264" r="36" fill="url(#eyeGrad)" filter="url(#eyeGlow)"/>
+  <!-- Left eye highlight -->
+  <circle cx="175" cy="253" r="10" fill="white" opacity="0.75"/>
+  <circle cx="196" cy="269" r="4"  fill="white" opacity="0.35"/>
+
+  <!-- Right eye socket -->
+  <circle cx="325" cy="264" r="48" fill="#E8F4FD" stroke="#1A7DC4" stroke-width="3" opacity="0.4"/>
+  <!-- Right eye -->
+  <circle cx="325" cy="264" r="36" fill="url(#eyeGrad)" filter="url(#eyeGlow)"/>
+  <!-- Right eye highlight -->
+  <circle cx="313" cy="253" r="10" fill="white" opacity="0.75"/>
+  <circle cx="334" cy="269" r="4"  fill="white" opacity="0.35"/>
+
+  <!-- Subtle smile line (minimal, friendly) -->
+  <path d="M 210 330 Q 256 356 302 330"
+        fill="none" stroke="#1A7DC4" stroke-width="5"
+        stroke-linecap="round" opacity="0.35"/>
+
+  <!-- Collar / neck band (business accent) -->
+  <rect x="120" y="374" width="272" height="30" rx="0" fill="#1A7DC4" opacity="0.12"/>
+  <rect x="120" y="374" width="272" height="30" rx="0" ry="0"
+        fill="none" stroke="#1A7DC4" stroke-width="0"/>
+  <!-- Bottom of face clips the collar naturally via the rounded rect above -->
+
+  <!-- Side ear panels (robot detail) -->
+  <rect x="96"  y="220" width="28" height="72" rx="14" fill="url(#antennaGrad)" opacity="0.85"/>
+  <rect x="388" y="220" width="28" height="72" rx="14" fill="url(#antennaGrad)" opacity="0.85"/>
+  <!-- Ear highlights -->
+  <rect x="100" y="228" width="8" height="20" rx="4" fill="white" opacity="0.4"/>
+  <rect x="392" y="228" width="8" height="20" rx="4" fill="white" opacity="0.4"/>
+</svg>

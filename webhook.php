@@ -249,6 +249,14 @@ foreach ($data['events'] as $event) {
         $replyToken = $event['replyToken'] ?? '';
         $lineUserId = (string) ($event['source']['userId'] ?? '');
 
+        // [DEBUG] checkpoint 1: follow branch entered
+        webhook_log('follow event: entered', [
+            'line_user_id'       => $lineUserId,
+            'reply_token_exists' => ($replyToken !== ''),
+            'userRepo_ready'     => ($userRepo !== null),
+            'convStateRepo_ready'=> ($convStateRepo !== null),
+        ]);
+
         // Register user and save onboarding state
         if ($lineUserId !== '' && $userRepo !== null && $convStateRepo !== null) {
             try {
@@ -265,11 +273,17 @@ foreach ($data['events'] as $event) {
                     $state['onboarding_followup_sent'] = false;
                     $convStateRepo->saveState($followOwnerId, $state);
                     webhook_log('onboarding state saved', ['owner_id' => $followOwnerId]);
+                } else {
+                    // [DEBUG] checkpoint 2: already onboarded
+                    webhook_log('follow event: onboarding already saved', ['owner_id' => $followOwnerId]);
                 }
             } catch (\Throwable $e) {
                 webhook_log('follow event state save failed', ['error' => $e->getMessage()]);
             }
         }
+
+        // [DEBUG] checkpoint 3: about to reply
+        webhook_log('follow event: about to reply', ['reply_token_exists' => ($replyToken !== '')]);
 
         if ($replyToken !== '') {
             $welcomeText = implode("\n", [
@@ -289,6 +303,9 @@ foreach ($data['events'] as $event) {
             ]);
             line_reply($replyToken, $welcomeText);
         }
+
+        // [DEBUG] checkpoint 4: follow handler done
+        webhook_log('follow event: done');
         continue;
     }
 
@@ -817,17 +834,17 @@ foreach ($data['events'] as $event) {
             $dueDate   = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
         }
 
-        // Parse due_time from the start of saveTitle (only when due_date was resolved)
-        if ($dueDate !== null && $saveTitle !== '') {
+        // Parse due_time from the start of saveTitle
+        if ($saveTitle !== '') {
             if (preg_match('/^(\d{1,2}:\d{2})[ 　]*(.*)$/u', $saveTitle, $tm)) {
                 $dueTime   = $tm[1];
-                $saveTitle = trim(preg_replace('/^に/u', '', $tm[2]));
+                $saveTitle = trim(preg_replace('/^(?:に|から)/u', '', $tm[2]));
             } elseif (preg_match('/^(\d{1,2}時半)[ 　]*(.*)$/u', $saveTitle, $tm)) {
                 $dueTime   = $tm[1];
-                $saveTitle = trim(preg_replace('/^に/u', '', $tm[2]));
+                $saveTitle = trim(preg_replace('/^(?:に|から)/u', '', $tm[2]));
             } elseif (preg_match('/^(\d{1,2}時)[ 　]*(.*)$/u', $saveTitle, $tm)) {
                 $dueTime   = $tm[1];
-                $saveTitle = trim(preg_replace('/^に/u', '', $tm[2]));
+                $saveTitle = trim(preg_replace('/^(?:に|から)/u', '', $tm[2]));
             }
         }
 
