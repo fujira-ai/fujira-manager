@@ -4,6 +4,13 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.4-dev - 2026-03-20
+
+### Fixed
+- 「19時まで仕事」「13:30まで会議」のような「まで」付き時刻表現で、due_time が取得されない問題を修正
+
+---
+
 ## v1.1.3-dev - 2026-03-20
 
 ### Added

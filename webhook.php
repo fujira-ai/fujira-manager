@@ -901,11 +901,11 @@ foreach ($data['events'] as $event) {
         // Separator (space / に / から / の) is absorbed into the pattern
         $timePattern = 'no_match';
         if ($saveTitle !== '') {
-            if (preg_match('/^(\d{1,2}:\d{2})(?:[ 　]+|に|から|の)(.+)$/u', $saveTitle, $tm)) {
+            if (preg_match('/^(\d{1,2}:\d{2})(?:[ 　]+|に|から|の|まで)(.+)$/u', $saveTitle, $tm)) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim($tm[2]);
                 $timePattern = 'leading_hhmm';
-            } elseif (preg_match('/^(\d{1,2}時(?:半)?)(?:[ 　]+|に|から|の)(.+)$/u', $saveTitle, $tm)) {
+            } elseif (preg_match('/^(\d{1,2}時(?:半)?)(?:[ 　]+|に|から|の|まで)(.+)$/u', $saveTitle, $tm)) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim($tm[2]);
                 $timePattern = 'leading_ji';
