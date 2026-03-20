@@ -99,6 +99,14 @@ final class TaskRepository
         return $stmt->fetchAll();
     }
 
+    public function getTodayAlertTasksByOwner(int $ownerId, string $today): array
+    {
+        $sql = 'SELECT id, title, due_time FROM tasks WHERE owner_id = :owner_id AND status = :status AND due_date = :due_date AND due_time IS NOT NULL AND due_time != \'\' ORDER BY due_time ASC, id DESC';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute(['owner_id' => $ownerId, 'status' => 'open', 'due_date' => $today]);
+        return $stmt->fetchAll();
+    }
+
     public function getTomorrowTasksByOwner(int $ownerId, string $tomorrow): array
     {
         $sql = 'SELECT id, title, due_date, due_time FROM tasks WHERE owner_id = :owner_id AND status = :status AND due_date = :due_date ORDER BY CASE WHEN due_time IS NULL OR due_time = \'\' THEN 1 ELSE 0 END, due_time ASC, id DESC LIMIT 10';

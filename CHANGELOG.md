@@ -4,6 +4,19 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.3-dev - 2026-03-20
+
+### Added
+- due_time がある当日タスクについて、予定時刻の10分前に送る時間前アラートを追加
+- `cron/push_pre_alert.php` を追加
+- `TaskRepository::getTodayAlertTasksByOwner()` を追加
+
+### Changed
+- conv_state を使って予定前アラートの二重送信を防ぐように調整
+- 送信済み task_id を日付ごとに管理し、日付が変わると自動でリセットするよう調整
+
+---
+
 ## v1.1.2-dev - 2026-03-20
 
 ### Added
