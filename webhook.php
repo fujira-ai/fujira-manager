@@ -31,7 +31,7 @@ function webhook_log(string $message, array $context = []): void
 | LINE reply helper
 |--------------------------------------------------------------------------
 */
-function line_reply(string $replyToken, string $message): void
+function line_reply(string $replyToken, string $message, ?array $quickReply = null): void
 {
     global $config;
 
@@ -43,14 +43,13 @@ function line_reply(string $replyToken, string $message): void
 
     $url = 'https://api.line.me/v2/bot/message/reply';
 
+    $msgObj = ['type' => 'text', 'text' => $message];
+    if ($quickReply !== null) {
+        $msgObj['quickReply'] = $quickReply;
+    }
     $payload = [
         'replyToken' => $replyToken,
-        'messages' => [
-            [
-                'type' => 'text',
-                'text' => $message,
-            ]
-        ],
+        'messages'   => [$msgObj],
     ];
 
     $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -89,6 +88,30 @@ function line_reply(string $replyToken, string $message): void
         'request_json' => $json,
         'response' => $response,
     ]);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Quick reply helpers — list paging only
+|--------------------------------------------------------------------------
+*/
+function qr_item(string $label, string $text): array
+{
+    return ['type' => 'action', 'action' => ['type' => 'message', 'label' => $label, 'text' => $text]];
+}
+
+function build_list_quick_reply(int $page, int $totalPages): array
+{
+    if ($totalPages <= 1) {
+        $items = [qr_item('今日', '今日'), qr_item('一覧', '一覧'), qr_item('ヘルプ', 'ヘルプ')];
+    } elseif ($page === 1) {
+        $items = [qr_item('次', '次'), qr_item('今日', '今日'), qr_item('ヘルプ', 'ヘルプ')];
+    } elseif ($page >= $totalPages) {
+        $items = [qr_item('前', '前'), qr_item('一覧', '一覧'), qr_item('今日', '今日')];
+    } else {
+        $items = [qr_item('前', '前'), qr_item('次', '次'), qr_item('今日', '今日')];
+    }
+    return ['items' => $items];
 }
 
 /*
@@ -454,7 +477,8 @@ foreach ($data['events'] as $event) {
 
     // Task list command
     if ($text === '一覧' || $text === '/list') {
-        $replyText = '現在のタスクはありません';
+        $replyText  = '現在のタスクはありません';
+        $quickReply = null;
         if ($ownerId !== null && $taskRepo !== null) {
             try {
                 $tz           = new DateTimeZone('Asia/Tokyo');
@@ -466,8 +490,10 @@ foreach ($data['events'] as $event) {
                     foreach ($allTasks as $i => $t) {
                         $map[(string)($i + 1)] = (int) $t['id'];
                     }
-                    $page      = 1;
-                    $replyText = render_task_list_page($allTasks, $page, $listToday, $listTomorrow);
+                    $page       = 1;
+                    $totalPages = max(1, (int) ceil(count($allTasks) / 5));
+                    $replyText  = render_task_list_page($allTasks, $page, $listToday, $listTomorrow);
+                    $quickReply = build_list_quick_reply($page, $totalPages);
 
                     if ($convStateRepo !== null) {
                         webhook_log('list map save attempt', ['owner_id' => $ownerId, 'total' => count($allTasks)]);
@@ -490,14 +516,15 @@ foreach ($data['events'] as $event) {
             }
         }
         if ($replyToken !== '') {
-            line_reply($replyToken, $replyText);
+            line_reply($replyToken, $replyText, $quickReply);
         }
         continue;
     }
 
     // Next page command
     if ($text === '次' || $text === '/next') {
-        $replyText = '先に「一覧」を表示してから「次」を使ってください';
+        $replyText  = '先に「一覧」を表示してから「次」を使ってください';
+        $quickReply = null;
         if ($ownerId !== null && $taskRepo !== null && $convStateRepo !== null) {
             try {
                 $state        = $convStateRepo->getState($ownerId);
@@ -518,7 +545,8 @@ foreach ($data['events'] as $event) {
                         foreach ($allTasks as $i => $t) {
                             $map[(string)($i + 1)] = (int) $t['id'];
                         }
-                        $replyText = render_task_list_page($allTasks, $newPage, $lastToday, $lastTomorrow);
+                        $replyText  = render_task_list_page($allTasks, $newPage, $lastToday, $lastTomorrow);
+                        $quickReply = build_list_quick_reply($newPage, $totalPages);
 
                         $state['last_task_list_map'] = $map;
                         $state['last_list_page']     = $newPage;
@@ -532,14 +560,15 @@ foreach ($data['events'] as $event) {
             }
         }
         if ($replyToken !== '') {
-            line_reply($replyToken, $replyText);
+            line_reply($replyToken, $replyText, $quickReply);
         }
         continue;
     }
 
     // Previous page command
     if ($text === '前' || $text === '/prev') {
-        $replyText = '先に「一覧」を表示してから「前」を使ってください';
+        $replyText  = '先に「一覧」を表示してから「前」を使ってください';
+        $quickReply = null;
         if ($ownerId !== null && $taskRepo !== null && $convStateRepo !== null) {
             try {
                 $state        = $convStateRepo->getState($ownerId);
@@ -551,13 +580,15 @@ foreach ($data['events'] as $event) {
                     if ($currentPage <= 1) {
                         $replyText = 'これが最初のページです。';
                     } else {
-                        $allTasks = $taskRepo->getOpenTasksByOwner($ownerId, $lastToday, $lastTomorrow);
-                        $newPage  = $currentPage - 1;
-                        $map      = [];
+                        $allTasks   = $taskRepo->getOpenTasksByOwner($ownerId, $lastToday, $lastTomorrow);
+                        $newPage    = $currentPage - 1;
+                        $totalPages = max(1, (int) ceil(count($allTasks) / 5));
+                        $map        = [];
                         foreach ($allTasks as $i => $t) {
                             $map[(string)($i + 1)] = (int) $t['id'];
                         }
-                        $replyText = render_task_list_page($allTasks, $newPage, $lastToday, $lastTomorrow);
+                        $replyText  = render_task_list_page($allTasks, $newPage, $lastToday, $lastTomorrow);
+                        $quickReply = build_list_quick_reply($newPage, $totalPages);
 
                         $state['last_task_list_map'] = $map;
                         $state['last_list_page']     = $newPage;
@@ -571,7 +602,7 @@ foreach ($data['events'] as $event) {
             }
         }
         if ($replyToken !== '') {
-            line_reply($replyToken, $replyText);
+            line_reply($replyToken, $replyText, $quickReply);
         }
         continue;
     }

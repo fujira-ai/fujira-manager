@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.7-dev - 2026-03-20
+
+### Added
+- 一覧 / 次 / 前 の返信にクイックリプライを追加
+- ページ状態に応じて「次 / 前 / 今日 / 一覧 / ヘルプ」を出し分けるよう改善
+
+### Changed
+- line_reply() に省略可能な quickReply 引数を追加し、一覧表示時のみクイックリプライを付与できるよう調整
+
+---
+
 ## v1.1.6-dev - 2026-03-20
 
 ### Fixed
