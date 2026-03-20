@@ -667,9 +667,16 @@ foreach ($data['events'] as $event) {
                         $suffix = '（' . $done['due_time'] . '）';
                     }
 
-                    $remaining = $taskRepo->countOpenTasksByOwner($ownerId);
-                    $replyText = "ナイスです。\n・" . $done['title'] . $suffix . " を完了しました。\n\n"
-                        . ($remaining > 0 ? "残り{$remaining}件です。" : '今のタスクは0件です。');
+                    $remaining      = $taskRepo->countOpenTasksByOwner($ownerId);
+                    $todayRemaining = $taskRepo->countTodayOpenTasksByOwner($ownerId, $doneToday);
+                    if ($remaining === 0) {
+                        $remainText = '今のタスクは0件です。';
+                    } elseif ($todayRemaining === 0) {
+                        $remainText = '今日のタスクは完了です。';
+                    } else {
+                        $remainText = "今日の残りは{$todayRemaining}件です。";
+                    }
+                    $replyText = "ナイスです。\n・" . $done['title'] . $suffix . " を完了しました。\n\n" . $remainText;
                     webhook_log('task completed', ['owner_id' => $ownerId, 'task_id' => $taskId]);
                 }
             } catch (\Throwable $e) {
@@ -943,15 +950,15 @@ foreach ($data['events'] as $event) {
         // Separator (space / に / から / の) is absorbed into the pattern
         $timePattern = 'no_match';
         if ($saveTitle !== '') {
-            if (preg_match('/^(\d{1,2}:\d{2})(?:[ 　]+|に|から|の|まで)(.+)$/u', $saveTitle, $tm)) {
+            if (preg_match('/^(\d{1,2}:\d{2})(?:[ 　]+|に|から|の|まで|で)(.+)$/u', $saveTitle, $tm)) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim($tm[2]);
                 $timePattern = 'leading_hhmm';
-            } elseif (preg_match('/^(\d{1,2}時\d{1,2}分)(?:[ 　]+|に|から|の|まで)(.+)$/u', $saveTitle, $tm)) {
+            } elseif (preg_match('/^(\d{1,2}時\d{1,2}分)(?:[ 　]+|に|から|の|まで|で)(.+)$/u', $saveTitle, $tm)) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim($tm[2]);
                 $timePattern = 'leading_ji_fun';
-            } elseif (preg_match('/^(\d{1,2}時(?:半)?)(?:[ 　]+|に|から|の|まで)(.+)$/u', $saveTitle, $tm)) {
+            } elseif (preg_match('/^(\d{1,2}時(?:半)?)(?:[ 　]+|に|から|の|まで|で)(.+)$/u', $saveTitle, $tm)) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim($tm[2]);
                 $timePattern = 'leading_ji';
@@ -980,19 +987,19 @@ foreach ($data['events'] as $event) {
         // Only when neither leading nor trailing parse found a time
         // Order: 時分 > HH:MM > 時半 > 時 (specific to general; HH:MM before 時 to avoid 13:30 → 13時 mismatch)
         if ($dueTime === null && $saveTitle !== '') {
-            if (preg_match('/(\d{1,2}時\d{1,2}分)(?:に|から|の|まで|[ 　]+)?/u', $saveTitle, $tm)) {
+            if (preg_match('/(\d{1,2}時\d{1,2}分)(?:に|から|の|まで|で|[ 　]+)?/u', $saveTitle, $tm)) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim(preg_replace('/' . preg_quote($tm[0], '/') . '/u', '', $saveTitle, 1));
                 $timePattern = 'inline_ji_fun';
-            } elseif (preg_match('/(\d{1,2}:\d{2})(?:に|から|の|まで|[ 　]+)?/u', $saveTitle, $tm)) {
+            } elseif (preg_match('/(\d{1,2}:\d{2})(?:に|から|の|まで|で|[ 　]+)?/u', $saveTitle, $tm)) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim(preg_replace('/' . preg_quote($tm[0], '/') . '/u', '', $saveTitle, 1));
                 $timePattern = 'inline_hhmm';
-            } elseif (preg_match('/(\d{1,2}時半)(?:に|から|の|まで|[ 　]+)?/u', $saveTitle, $tm)) {
+            } elseif (preg_match('/(\d{1,2}時半)(?:に|から|の|まで|で|[ 　]+)?/u', $saveTitle, $tm)) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim(preg_replace('/' . preg_quote($tm[0], '/') . '/u', '', $saveTitle, 1));
                 $timePattern = 'inline_ji_han';
-            } elseif (preg_match('/(\d{1,2}時)(?:に|から|の|まで|[ 　]+)?/u', $saveTitle, $tm)) {
+            } elseif (preg_match('/(\d{1,2}時)(?:に|から|の|まで|で|[ 　]+)?/u', $saveTitle, $tm)) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim(preg_replace('/' . preg_quote($tm[0], '/') . '/u', '', $saveTitle, 1));
                 $timePattern = 'inline_ji';

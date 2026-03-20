@@ -139,6 +139,14 @@ final class TaskRepository
         return (int) $stmt->fetchColumn();
     }
 
+    public function countTodayOpenTasksByOwner(int $ownerId, string $today): int
+    {
+        $sql = 'SELECT COUNT(*) FROM tasks WHERE owner_id = :owner_id AND status = :status AND due_date = :due_date';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute(['owner_id' => $ownerId, 'status' => 'open', 'due_date' => $today]);
+        return (int) $stmt->fetchColumn();
+    }
+
     public function create(int $ownerId, string $title, ?string $dueDate = null, ?string $dueTime = null): int
     {
         $sql = 'INSERT INTO tasks (owner_id, title, status, source, due_date, due_time) VALUES (:owner_id, :title, :status, :source, :due_date, :due_time)';

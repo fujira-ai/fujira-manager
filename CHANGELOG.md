@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.10-dev - 2026-03-20
+
+### Fixed
+- 「21時半で作業終わりにする」のような入力で、時間直後の「で」がタイトル先頭に残る問題を修正
+
+### Changed
+- タスク完了後の返信文を改善し、全体残件数ではなく今日の残り状況が分かるよう調整
+- 今日の未完了タスク件数を取得する `countTodayOpenTasksByOwner()` を追加
+
+---
+
 ## v1.1.9-dev - 2026-03-20
 
 ### Changed
