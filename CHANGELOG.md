@@ -4,6 +4,14 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.6-dev - 2026-03-20
+
+### Fixed
+- inline fallback のパターン順を修正し、HH:MM を `時` より前に判定するよう調整
+- タイトル生成時の時間除去を `preg_replace(..., 1)` に変更し、最初の一致だけ除去するよう修正
+
+---
+
 ## v1.1.5-dev - 2026-03-20
 
 ### Fixed

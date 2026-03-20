@@ -934,6 +934,29 @@ foreach ($data['events'] as $event) {
             }
         }
 
+        // Fallback: inline time extraction — handles no-separator cases (e.g. "20時10分ラインチェック")
+        // Only when neither leading nor trailing parse found a time
+        // Order: 時分 > HH:MM > 時半 > 時 (specific to general; HH:MM before 時 to avoid 13:30 → 13時 mismatch)
+        if ($dueTime === null && $saveTitle !== '') {
+            if (preg_match('/(\d{1,2}時\d{1,2}分)(?:に|から|の|まで|[ 　]+)?/u', $saveTitle, $tm)) {
+                $dueTime     = $tm[1];
+                $saveTitle   = trim(preg_replace('/' . preg_quote($tm[0], '/') . '/u', '', $saveTitle, 1));
+                $timePattern = 'inline_ji_fun';
+            } elseif (preg_match('/(\d{1,2}:\d{2})(?:に|から|の|まで|[ 　]+)?/u', $saveTitle, $tm)) {
+                $dueTime     = $tm[1];
+                $saveTitle   = trim(preg_replace('/' . preg_quote($tm[0], '/') . '/u', '', $saveTitle, 1));
+                $timePattern = 'inline_hhmm';
+            } elseif (preg_match('/(\d{1,2}時半)(?:に|から|の|まで|[ 　]+)?/u', $saveTitle, $tm)) {
+                $dueTime     = $tm[1];
+                $saveTitle   = trim(preg_replace('/' . preg_quote($tm[0], '/') . '/u', '', $saveTitle, 1));
+                $timePattern = 'inline_ji_han';
+            } elseif (preg_match('/(\d{1,2}時)(?:に|から|の|まで|[ 　]+)?/u', $saveTitle, $tm)) {
+                $dueTime     = $tm[1];
+                $saveTitle   = trim(preg_replace('/' . preg_quote($tm[0], '/') . '/u', '', $saveTitle, 1));
+                $timePattern = 'inline_ji';
+            }
+        }
+
         // Strip any remaining leading の from title
         $saveTitle = trim(preg_replace('/^の/u', '', $saveTitle));
 
