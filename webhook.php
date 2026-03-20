@@ -103,14 +103,25 @@ function qr_item(string $label, string $text): array
 function build_list_quick_reply(int $page, int $totalPages): array
 {
     if ($totalPages <= 1) {
-        $items = [qr_item('今日', '今日'), qr_item('一覧', '一覧'), qr_item('ヘルプ', 'ヘルプ')];
+        $items = [qr_item('今日', '今日')];
     } elseif ($page === 1) {
-        $items = [qr_item('次', '次'), qr_item('今日', '今日'), qr_item('ヘルプ', 'ヘルプ')];
+        $items = [qr_item('次', '次'), qr_item('今日', '今日')];
     } elseif ($page >= $totalPages) {
-        $items = [qr_item('前', '前'), qr_item('一覧', '一覧'), qr_item('今日', '今日')];
+        $items = [qr_item('前', '前'), qr_item('今日', '今日')];
     } else {
         $items = [qr_item('前', '前'), qr_item('次', '次'), qr_item('今日', '今日')];
     }
+    return ['items' => $items];
+}
+
+function build_today_quick_reply(int $count): array
+{
+    $items = [];
+    $n     = min($count, 3);
+    for ($i = 1; $i <= $n; $i++) {
+        $items[] = qr_item('完了' . $i, '完了' . $i);
+    }
+    $items[] = qr_item('一覧', '一覧');
     return ['items' => $items];
 }
 
@@ -615,7 +626,7 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
-    if (preg_match('/^(?:完了|\/done)\s+(\d+)$/u', $text, $matches)) {
+    if (preg_match('/^(?:完了|\/done)\s*(\d+)$/u', $text, $matches)) {
         $num    = (int) $matches[1];
         $taskId = $num;
 
@@ -783,7 +794,8 @@ foreach ($data['events'] as $event) {
             $greeting = 'こんばんは。';
         }
 
-        $replyText = $greeting . "\n\n今日が期限のタスクはありません";
+        $replyText  = $greeting . "\n\n今日が期限のタスクはありません";
+        $quickReply = null;
         if ($ownerId !== null && $taskRepo !== null) {
             try {
                 $today      = $nowJst->format('Y-m-d');
@@ -791,9 +803,14 @@ foreach ($data['events'] as $event) {
                 if (!empty($todayTasks)) {
                     $lines = [$greeting, '', '今日のタスク:'];
                     foreach ($todayTasks as $i => $t) {
-                        $lines[] = ($i + 1) . '. ' . $t['title'];
+                        $line = ($i + 1) . '. ' . $t['title'];
+                        if (!empty($t['due_time'])) {
+                            $line .= '（' . $t['due_time'] . '）';
+                        }
+                        $lines[] = $line;
                     }
-                    $replyText = implode("\n", $lines);
+                    $replyText  = implode("\n", $lines);
+                    $quickReply = build_today_quick_reply(count($todayTasks));
                 }
             } catch (\Throwable $e) {
                 webhook_log('task today failed', ['error' => $e->getMessage()]);
@@ -801,7 +818,7 @@ foreach ($data['events'] as $event) {
             }
         }
         if ($replyToken !== '') {
-            line_reply($replyToken, $replyText);
+            line_reply($replyToken, $replyText, $quickReply);
         }
         continue;
     }
