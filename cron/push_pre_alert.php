@@ -29,12 +29,15 @@ function cron_log(string $message, array $context = []): void
 /*
 |--------------------------------------------------------------------------
 | due_time parser — returns minutes since midnight, or null if unparseable
-| Supported: "13:30", "9:05", "13時", "13時半", "9時"
+| Supported: "13:30", "9:05", "13時", "13時半", "9時", "20時5分", "9時05分"
 |--------------------------------------------------------------------------
 */
 function parse_due_time_minutes(string $dueTime): ?int
 {
     if (preg_match('/^(\d{1,2}):(\d{2})$/', $dueTime, $m)) {
+        return (int) $m[1] * 60 + (int) $m[2];
+    }
+    if (preg_match('/^(\d{1,2})時(\d{1,2})分$/u', $dueTime, $m)) {
         return (int) $m[1] * 60 + (int) $m[2];
     }
     if (preg_match('/^(\d{1,2})時半$/u', $dueTime, $m)) {

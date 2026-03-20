@@ -905,6 +905,10 @@ foreach ($data['events'] as $event) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim($tm[2]);
                 $timePattern = 'leading_hhmm';
+            } elseif (preg_match('/^(\d{1,2}時\d{1,2}分)(?:[ 　]+|に|から|の|まで)(.+)$/u', $saveTitle, $tm)) {
+                $dueTime     = $tm[1];
+                $saveTitle   = trim($tm[2]);
+                $timePattern = 'leading_ji_fun';
             } elseif (preg_match('/^(\d{1,2}時(?:半)?)(?:[ 　]+|に|から|の|まで)(.+)$/u', $saveTitle, $tm)) {
                 $dueTime     = $tm[1];
                 $saveTitle   = trim($tm[2]);
