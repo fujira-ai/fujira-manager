@@ -4,6 +4,14 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.19-dev - 2026-03-21
+
+### Fixed
+- 「今日夕飯はしんぱちにする」のような入力で、「夕飯」を時間帯ラベルとして誤って吸収していた問題を修正
+- 食事系の語を含む入力で、タイトルから「夕飯」が消えないよう自然言語パースを調整
+
+---
+
 ## v1.1.18-dev - 2026-03-21
 
 ### Fixed
