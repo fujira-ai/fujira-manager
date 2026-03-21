@@ -4,6 +4,13 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.18-dev - 2026-03-21
+
+### Fixed
+- 「明日17時に実家」「今日20時10分ラインチェック」のように、日付語の直後にセパレータなしで時刻が続く入力でも、due_date・due_time・title を正しく分離できるよう修正
+
+---
+
 ## v1.1.17-dev - 2026-03-21
 
 ### Fixed

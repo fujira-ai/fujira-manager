@@ -1088,10 +1088,10 @@ foreach ($data['events'] as $event) {
             $saveTitle = trim($dm[3]);
             $year      = (int) (new DateTime('now', $tz))->format('Y');
             $dueDate   = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
-        } elseif (preg_match('/^今日(?:[ 　]+|[ 　]*(?:夕方は?|夕飯は?|朝は|昼は|夜は|の|は)[ 　]*)(.+)$/u', $text, $dm)) {
+        } elseif (preg_match('/^今日(?:[ 　]+|[ 　]*(?:夕方は?|夕飯は?|朝は|昼は|夜は|の|は)[ 　]*)?(.+)$/u', $text, $dm)) {
             $saveTitle = trim($dm[1]);
             $dueDate   = (new DateTime('now', $tz))->format('Y-m-d');
-        } elseif (preg_match('/^明日(?:[ 　]+|[ 　]*(?:夕方は?|夕飯は?|朝は|昼は|夜は|の|は)[ 　]*)(.+)$/u', $text, $dm)) {
+        } elseif (preg_match('/^明日(?:[ 　]+|[ 　]*(?:夕方は?|夕飯は?|朝は|昼は|夜は|の|は)[ 　]*)?(.+)$/u', $text, $dm)) {
             $saveTitle = trim($dm[1]);
             $d = new DateTime('now', $tz);
             $d->modify('+1 day');
