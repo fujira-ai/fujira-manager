@@ -91,6 +91,14 @@ final class TaskRepository
         return $stmt->fetchAll();
     }
 
+    public function getTimedOpenTasksByOwnerAndDate(int $ownerId, string $date): array
+    {
+        $sql = 'SELECT id, title, due_time FROM tasks WHERE owner_id = :owner_id AND status = :status AND due_date = :date AND due_time IS NOT NULL AND due_time != \'\' ORDER BY due_time ASC';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute(['owner_id' => $ownerId, 'status' => 'open', 'date' => $date]);
+        return $stmt->fetchAll();
+    }
+
     public function getAllNoDueDateTasksByOwner(int $ownerId): array
     {
         $sql = 'SELECT id, title FROM tasks WHERE owner_id = :owner_id AND status = :status AND due_date IS NULL ORDER BY id DESC';

@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.22-dev - 2026-03-21
+
+### Added
+- 時刻付きタスク登録時、同日30分以内に既存タスクがある場合に確認メッセージを表示する機能を追加
+- 確認後「登録する」で保存、「やめる」でキャンセルするクイックリプライ対応を追加
+
+### Changed
+- 競合確認中のタスク情報を `conv_state` に保持し、確認後に登録または破棄できるよう調整
+
+---
+
 ## v1.1.21-dev - 2026-03-21
 
 ### Added

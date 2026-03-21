@@ -141,6 +141,28 @@ function build_nodue_quick_reply(int $page, int $totalPages): array
 
 /*
 |--------------------------------------------------------------------------
+| Time string → minutes-since-midnight converter (for conflict check)
+|--------------------------------------------------------------------------
+*/
+function parse_time_to_minutes(string $time): ?int
+{
+    if (preg_match('/^(\d{1,2}):(\d{2})$/u', $time, $m)) {
+        return (int) $m[1] * 60 + (int) $m[2];
+    }
+    if (preg_match('/^(\d{1,2})時(\d{1,2})分$/u', $time, $m)) {
+        return (int) $m[1] * 60 + (int) $m[2];
+    }
+    if (preg_match('/^(\d{1,2})時半$/u', $time, $m)) {
+        return (int) $m[1] * 60 + 30;
+    }
+    if (preg_match('/^(\d{1,2})時$/u', $time, $m)) {
+        return (int) $m[1] * 60;
+    }
+    return null;
+}
+
+/*
+|--------------------------------------------------------------------------
 | Task list page renderer
 |--------------------------------------------------------------------------
 */
@@ -1033,6 +1055,46 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
+    // Conflict confirm: 登録する / やめる
+    if ($text === '登録する' || $text === 'やめる') {
+        $replyText = 'キャンセルしました';
+        if ($ownerId !== null && $convStateRepo !== null) {
+            try {
+                $state = $convStateRepo->getState($ownerId);
+                if (($state['mode'] ?? '') === 'confirm_conflict') {
+                    if ($text === '登録する' && $taskRepo !== null) {
+                        $pendingTitle = (string) ($state['pending_title']    ?? '');
+                        $pendingDate  = $state['pending_due_date']  ?? null;
+                        $pendingTime  = $state['pending_due_time']  ?? null;
+                        if ($pendingTitle !== '') {
+                            $taskId = $taskRepo->create($ownerId, $pendingTitle, $pendingDate, $pendingTime);
+                            webhook_log('conflict confirm: task created', ['owner_id' => $ownerId, 'task_id' => $taskId, 'title' => $pendingTitle]);
+                            $tz          = new DateTimeZone('Asia/Tokyo');
+                            $msg         = "登録しました:\n・" . $pendingTitle;
+                            if ($pendingDate !== null) {
+                                $todayStr    = (new DateTime('now', $tz))->format('Y-m-d');
+                                $tomorrowStr = (new DateTime('tomorrow', $tz))->format('Y-m-d');
+                                $dateLbl     = ($pendingDate === $todayStr) ? '今日' : (($pendingDate === $tomorrowStr) ? '明日' : $pendingDate);
+                                $msg        .= "\n期限：" . $dateLbl . ($pendingTime !== null ? ' ' . $pendingTime : '');
+                            }
+                            $replyText = $msg;
+                        }
+                    } else {
+                        webhook_log('conflict confirm: cancelled', ['owner_id' => $ownerId]);
+                    }
+                    unset($state['mode'], $state['pending_title'], $state['pending_due_date'], $state['pending_due_time']);
+                    $convStateRepo->saveState($ownerId, $state);
+                }
+            } catch (\Throwable $e) {
+                webhook_log('conflict confirm failed', ['error' => $e->getMessage()]);
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
     // Save task
     $isCommand = ($text === '一覧'
         || $text === '/list'
@@ -1048,7 +1110,9 @@ foreach ($data['events'] as $event) {
         || $text === '/brief'
         || $text === 'ブリーフ'
         || $text === '期限なし'
-        || $text === '未定');
+        || $text === '未定'
+        || $text === '登録する'
+        || $text === 'やめる');
 
     webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text, 'is_command' => $isCommand]);
 
@@ -1198,6 +1262,46 @@ foreach ($data['events'] as $event) {
                 line_reply($replyToken, '内容を入力してください');
             }
             continue;
+        }
+
+        // Time conflict check: only when both due_date and due_time are set
+        if ($dueDate !== null && $dueTime !== null && $convStateRepo !== null) {
+            try {
+                $timedTasks = $taskRepo->getTimedOpenTasksByOwnerAndDate($ownerId, $dueDate);
+                $newMinutes = parse_time_to_minutes($dueTime);
+                $conflicts  = [];
+                if ($newMinutes !== null) {
+                    foreach ($timedTasks as $ct) {
+                        $existingMin = parse_time_to_minutes((string) $ct['due_time']);
+                        if ($existingMin !== null && abs($newMinutes - $existingMin) <= 30) {
+                            $conflicts[] = $ct;
+                        }
+                    }
+                }
+                if (!empty($conflicts)) {
+                    $state                          = $convStateRepo->getState($ownerId);
+                    $state['mode']                  = 'confirm_conflict';
+                    $state['pending_title']         = $saveTitle;
+                    $state['pending_due_date']      = $dueDate;
+                    $state['pending_due_time']      = $dueTime;
+                    $convStateRepo->saveState($ownerId, $state);
+                    webhook_log('conflict check triggered', ['owner_id' => $ownerId, 'new_time' => $dueTime, 'conflict_count' => count($conflicts)]);
+                    $lines = ['近い時間の予定があります。', ''];
+                    foreach ($conflicts as $ct) {
+                        $lines[] = '・' . $ct['due_time'] . ' ' . $ct['title'];
+                    }
+                    $lines[] = '';
+                    $lines[] = 'このまま登録しますか？';
+                    $qr = ['items' => [qr_item('登録する', '登録する'), qr_item('やめる', 'やめる')]];
+                    if ($replyToken !== '') {
+                        line_reply($replyToken, implode("\n", $lines), $qr);
+                    }
+                    continue;
+                }
+            } catch (\Throwable $e) {
+                webhook_log('conflict check failed', ['error' => $e->getMessage()]);
+                // On error proceed with saving normally
+            }
         }
 
         try {
