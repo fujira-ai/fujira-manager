@@ -798,7 +798,7 @@ foreach ($data['events'] as $event) {
             $greeting = 'こんばんは。';
         }
 
-        $replyText  = $greeting . "\n\n今日が期限のタスクはありません";
+        $replyText  = $greeting . "\n\n今日のタスクはありません\n\n👉 1つ追加してみましょう";
         $quickReply = null;
         if ($ownerId !== null && $taskRepo !== null) {
             try {

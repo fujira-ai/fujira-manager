@@ -4,6 +4,13 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.14-dev - 2026-03-21
+
+### Changed
+- 「今日」コマンドでタスク0件時の文言を改善し、次の行動（タスク追加）を促す案内を追加
+
+---
+
 ## v1.1.13-dev - 2026-03-21
 
 ### Changed
