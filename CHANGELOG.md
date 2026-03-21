@@ -4,6 +4,21 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+### v1.2.0-dev - 2026-03-21
+
+### Added
+- タスク登録時に文末の `#タグ名` を抽出して `tasks.tag` に保存する機能を追加
+- `#タグ名` の単独送信で、そのタグの open タスク一覧を表示するタグ検索を追加
+- タグ一覧に 1ページ5件のページングと `完了N` 操作の整合を追加
+- 競合確認後の登録でもタグを引き継げるよう対応
+- ヘルプにタグ機能の案内を追加
+
+### Changed
+- `次` / `前` が `tag` モードでも動作するよう、`last_list_mode = tag` と `last_list_tag` を用いた状態管理を追加
+- タスク登録・競合確認ログに `tag` フィールドを追加
+
+---
+
 ## v1.1.22-dev - 2026-03-21
 
 ### Added

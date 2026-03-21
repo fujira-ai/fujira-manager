@@ -139,6 +139,20 @@ function build_nodue_quick_reply(int $page, int $totalPages): array
     return ['items' => $items];
 }
 
+function build_tag_quick_reply(int $page, int $totalPages): array
+{
+    if ($totalPages <= 1) {
+        $items = [qr_item('一覧', '一覧'), qr_item('今日', '今日')];
+    } elseif ($page === 1) {
+        $items = [qr_item('次', '次'), qr_item('一覧', '一覧')];
+    } elseif ($page >= $totalPages) {
+        $items = [qr_item('前', '前'), qr_item('一覧', '一覧')];
+    } else {
+        $items = [qr_item('前', '前'), qr_item('次', '次'), qr_item('一覧', '一覧')];
+    }
+    return ['items' => $items];
+}
+
 /*
 |--------------------------------------------------------------------------
 | Time string → minutes-since-midnight converter (for conflict check)
@@ -273,6 +287,56 @@ function render_nodue_list_page(array $allTasks, int $page): string
     $lines = [$header, ''];
     foreach ($pageTasks as $idx => $t) {
         $lines[] = ($offset + $idx + 1) . '. ' . $t['title'];
+    }
+
+    $firstNum = $offset + 1;
+    $lines[]  = '';
+    $lines[]  = '→ 完了する場合：「完了 ' . $firstNum . '」';
+    if ($page < $totalPages) {
+        $lines[] = '→ 続きを見る：「次」';
+    }
+
+    return implode("\n", $lines);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Tag task list page renderer
+|--------------------------------------------------------------------------
+*/
+function render_tag_list_page(array $allTasks, int $page, string $tag, string $listToday): string
+{
+    $pageSize   = 5;
+    $total      = count($allTasks);
+    $totalPages = max(1, (int) ceil($total / $pageSize));
+    $page       = max(1, min($page, $totalPages));
+    $offset     = ($page - 1) * $pageSize;
+    $pageTasks  = array_slice($allTasks, $offset, $pageSize);
+
+    $header = ($totalPages > 1)
+        ? '#' . $tag . ' のタスク（' . $page . '/' . $totalPages . '）'
+        : '#' . $tag . ' のタスク（' . $total . '件）';
+
+    $lines = [$header, ''];
+    foreach ($pageTasks as $idx => $t) {
+        $num    = $offset + $idx + 1;
+        $line   = $num . '. ' . $t['title'];
+        $detail = '';
+        if (!empty($t['due_date'])) {
+            if ($t['due_date'] === $listToday) {
+                $detail = '今日';
+            } else {
+                $d      = new DateTime($t['due_date']);
+                $detail = $d->format('n') . '/' . $d->format('j');
+            }
+        }
+        if (!empty($t['due_time'])) {
+            $detail = ($detail !== '') ? $detail . ' ' . $t['due_time'] : $t['due_time'];
+        }
+        if ($detail !== '') {
+            $line .= '（' . $detail . '）';
+        }
+        $lines[] = $line;
     }
 
     $firstNum = $offset + 1;
@@ -658,7 +722,31 @@ foreach ($data['events'] as $event) {
                 $lastTomorrow = $state['last_list_tomorrow'] ?? null;
 
                 $listMode = $state['last_list_mode'] ?? 'all';
-                if ($listMode === 'nodue' && $currentPage > 0) {
+                if ($listMode === 'tag' && $currentPage > 0) {
+                    $lastTag    = $state['last_list_tag'] ?? null;
+                    $lastToday2 = $state['last_list_today'] ?? null;
+                    if ($lastTag !== null && $lastToday2 !== null) {
+                        $allTasks   = $taskRepo->getOpenTasksByTag($ownerId, $lastTag);
+                        $totalPages = max(1, (int) ceil(count($allTasks) / 5));
+
+                        if ($currentPage >= $totalPages) {
+                            $replyText = 'これが最後のページです。';
+                        } else {
+                            $newPage = $currentPage + 1;
+                            $map     = [];
+                            foreach ($allTasks as $i => $t) {
+                                $map[(string)($i + 1)] = (int) $t['id'];
+                            }
+                            $replyText  = render_tag_list_page($allTasks, $newPage, $lastTag, $lastToday2);
+                            $quickReply = build_tag_quick_reply($newPage, $totalPages);
+
+                            $state['last_task_list_map'] = $map;
+                            $state['last_list_page']     = $newPage;
+                            $convStateRepo->saveState($ownerId, $state);
+                        }
+                        webhook_log('next page (tag)', ['owner_id' => $ownerId, 'tag' => $lastTag, 'page' => $currentPage, 'total_pages' => $totalPages]);
+                    }
+                } elseif ($listMode === 'nodue' && $currentPage > 0) {
                     $allTasks   = $taskRepo->getAllNoDueDateTasksByOwner($ownerId);
                     $totalPages = max(1, (int) ceil(count($allTasks) / 5));
 
@@ -678,7 +766,7 @@ foreach ($data['events'] as $event) {
                         $convStateRepo->saveState($ownerId, $state);
                     }
                     webhook_log('next page (nodue)', ['owner_id' => $ownerId, 'page' => $currentPage, 'total_pages' => $totalPages]);
-                } elseif ($listMode !== 'nodue' && $currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
+                } elseif ($listMode !== 'nodue' && $listMode !== 'tag' && $currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
                     $allTasks   = $taskRepo->getOpenTasksByOwner($ownerId, $lastToday, $lastTomorrow);
                     $pageSize   = 5;
                     $totalPages = max(1, (int) ceil(count($allTasks) / $pageSize));
@@ -723,7 +811,30 @@ foreach ($data['events'] as $event) {
                 $lastTomorrow = $state['last_list_tomorrow'] ?? null;
 
                 $listMode = $state['last_list_mode'] ?? 'all';
-                if ($listMode === 'nodue' && $currentPage > 0) {
+                if ($listMode === 'tag' && $currentPage > 0) {
+                    $lastTag    = $state['last_list_tag'] ?? null;
+                    $lastToday2 = $state['last_list_today'] ?? null;
+                    if ($lastTag !== null && $lastToday2 !== null) {
+                        if ($currentPage <= 1) {
+                            $replyText = 'これが最初のページです。';
+                        } else {
+                            $allTasks   = $taskRepo->getOpenTasksByTag($ownerId, $lastTag);
+                            $newPage    = $currentPage - 1;
+                            $totalPages = max(1, (int) ceil(count($allTasks) / 5));
+                            $map        = [];
+                            foreach ($allTasks as $i => $t) {
+                                $map[(string)($i + 1)] = (int) $t['id'];
+                            }
+                            $replyText  = render_tag_list_page($allTasks, $newPage, $lastTag, $lastToday2);
+                            $quickReply = build_tag_quick_reply($newPage, $totalPages);
+
+                            $state['last_task_list_map'] = $map;
+                            $state['last_list_page']     = $newPage;
+                            $convStateRepo->saveState($ownerId, $state);
+                        }
+                        webhook_log('prev page (tag)', ['owner_id' => $ownerId, 'tag' => $lastTag, 'page' => $currentPage]);
+                    }
+                } elseif ($listMode === 'nodue' && $currentPage > 0) {
                     if ($currentPage <= 1) {
                         $replyText = 'これが最初のページです。';
                     } else {
@@ -742,7 +853,7 @@ foreach ($data['events'] as $event) {
                         $convStateRepo->saveState($ownerId, $state);
                     }
                     webhook_log('prev page (nodue)', ['owner_id' => $ownerId, 'page' => $currentPage]);
-                } elseif ($listMode !== 'nodue' && $currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
+                } elseif ($listMode !== 'nodue' && $listMode !== 'tag' && $currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
                     if ($currentPage <= 1) {
                         $replyText = 'これが最初のページです。';
                     } else {
@@ -1055,6 +1166,52 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
+    // Tag search: "#タグ名" alone
+    if (preg_match('/^#([\w\x{3000}-\x{9fff}\x{3040}-\x{309f}\x{30a0}-\x{30ff}\x{4e00}-\x{9fff}]+)$/u', $text, $tagMatch)) {
+        $searchTag  = $tagMatch[1];
+        $replyText  = '#' . $searchTag . ' のタスクはありません。';
+        $quickReply = null;
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $tz        = new DateTimeZone('Asia/Tokyo');
+                $listToday = (new DateTime('now', $tz))->format('Y-m-d');
+                $allTasks  = $taskRepo->getOpenTasksByTag($ownerId, $searchTag);
+                if (!empty($allTasks)) {
+                    $map = [];
+                    foreach ($allTasks as $i => $t) {
+                        $map[(string)($i + 1)] = (int) $t['id'];
+                    }
+                    $page       = 1;
+                    $totalPages = max(1, (int) ceil(count($allTasks) / 5));
+                    $replyText  = render_tag_list_page($allTasks, $page, $searchTag, $listToday);
+                    $quickReply = build_tag_quick_reply($page, $totalPages);
+
+                    if ($convStateRepo !== null) {
+                        try {
+                            $state                       = $convStateRepo->getState($ownerId);
+                            $state['last_task_list_map'] = $map;
+                            $state['last_list_page']     = $page;
+                            $state['last_list_mode']     = 'tag';
+                            $state['last_list_tag']      = $searchTag;
+                            $state['last_list_today']    = $listToday;
+                            $convStateRepo->saveState($ownerId, $state);
+                        } catch (\Throwable $e) {
+                            webhook_log('tag list state save failed', ['error' => $e->getMessage()]);
+                        }
+                    }
+                }
+                webhook_log('tag search', ['owner_id' => $ownerId, 'tag' => $searchTag, 'count' => count($allTasks)]);
+            } catch (\Throwable $e) {
+                webhook_log('tag search failed', ['error' => $e->getMessage()]);
+                $replyText = '検索に失敗しました。';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText, $quickReply);
+        }
+        continue;
+    }
+
     // Conflict confirm: 登録する / やめる
     if ($text === '登録する' || $text === 'やめる') {
         $replyText = 'キャンセルしました';
@@ -1066,9 +1223,10 @@ foreach ($data['events'] as $event) {
                         $pendingTitle = (string) ($state['pending_title']    ?? '');
                         $pendingDate  = $state['pending_due_date']  ?? null;
                         $pendingTime  = $state['pending_due_time']  ?? null;
+                        $pendingTag   = $state['pending_tag']        ?? null;
                         if ($pendingTitle !== '') {
-                            $taskId = $taskRepo->create($ownerId, $pendingTitle, $pendingDate, $pendingTime);
-                            webhook_log('conflict confirm: task created', ['owner_id' => $ownerId, 'task_id' => $taskId, 'title' => $pendingTitle]);
+                            $taskId = $taskRepo->create($ownerId, $pendingTitle, $pendingDate, $pendingTime, $pendingTag);
+                            webhook_log('conflict confirm: task created', ['owner_id' => $ownerId, 'task_id' => $taskId, 'title' => $pendingTitle, 'tag' => $pendingTag]);
                             $tz          = new DateTimeZone('Asia/Tokyo');
                             $msg         = "登録しました:\n・" . $pendingTitle;
                             if ($pendingDate !== null) {
@@ -1082,7 +1240,7 @@ foreach ($data['events'] as $event) {
                     } else {
                         webhook_log('conflict confirm: cancelled', ['owner_id' => $ownerId]);
                     }
-                    unset($state['mode'], $state['pending_title'], $state['pending_due_date'], $state['pending_due_time']);
+                    unset($state['mode'], $state['pending_title'], $state['pending_due_date'], $state['pending_due_time'], $state['pending_tag']);
                     $convStateRepo->saveState($ownerId, $state);
                 }
             } catch (\Throwable $e) {
@@ -1230,6 +1388,13 @@ foreach ($data['events'] as $event) {
         // Strip any remaining leading の from title
         $saveTitle = trim(preg_replace('/^の/u', '', $saveTitle));
 
+        // Extract #tag from end of saveTitle
+        $tag = null;
+        if (preg_match('/^(.*?)[ 　]*(#[\w\x{3000}-\x{9fff}\x{3040}-\x{309f}\x{30a0}-\x{30ff}\x{4e00}-\x{9fff}]+)[ 　]*$/u', $saveTitle, $tagMatch)) {
+            $saveTitle = trim($tagMatch[1]);
+            $tag       = ltrim($tagMatch[2], '#');
+        }
+
         // If the entire remaining title is just a time-of-day label (e.g. "今日夜", "明日夕方"),
         // treat it as empty so the empty-title guard below rejects it.
         // Food words (夕飯, ランチ, etc.) are intentionally excluded from this list.
@@ -1245,6 +1410,7 @@ foreach ($data['events'] as $event) {
             'due_date'     => $dueDate,
             'due_time'     => $dueTime,
             'title'        => $saveTitle,
+            'tag'          => $tag,
         ]);
 
         if ($saveTitle === '') {
@@ -1255,6 +1421,7 @@ foreach ($data['events'] as $event) {
                 'due_date'     => $dueDate,
                 'due_time'     => $dueTime,
                 'title'        => '',
+                'tag'          => $tag,
                 'result'       => 'rejected',
                 'reason'       => 'empty_title',
             ]);
@@ -1284,6 +1451,7 @@ foreach ($data['events'] as $event) {
                     $state['pending_title']         = $saveTitle;
                     $state['pending_due_date']      = $dueDate;
                     $state['pending_due_time']      = $dueTime;
+                    $state['pending_tag']           = $tag;
                     $convStateRepo->saveState($ownerId, $state);
                     webhook_log('conflict check triggered', ['owner_id' => $ownerId, 'new_time' => $dueTime, 'conflict_count' => count($conflicts)]);
                     $lines = ['近い時間の予定があります。', ''];
@@ -1305,9 +1473,9 @@ foreach ($data['events'] as $event) {
         }
 
         try {
-            $taskId      = $taskRepo->create($ownerId, $saveTitle, $dueDate, $dueTime);
+            $taskId      = $taskRepo->create($ownerId, $saveTitle, $dueDate, $dueTime, $tag);
             $parseResult = ($dueDate === null && $dueTime === null) ? 'fallback_saved' : 'saved';
-            webhook_log('task created', ['owner_id' => $ownerId, 'title' => $saveTitle, 'due_date' => $dueDate, 'due_time' => $dueTime, 'task_id' => $taskId]);
+            webhook_log('task created', ['owner_id' => $ownerId, 'title' => $saveTitle, 'due_date' => $dueDate, 'due_time' => $dueTime, 'tag' => $tag, 'task_id' => $taskId]);
             webhook_log($parseResult === 'fallback_saved' ? 'task parse fallback' : 'task parse result', [
                 'raw_text'     => $text,
                 'date_pattern' => $datePattern,
@@ -1315,6 +1483,7 @@ foreach ($data['events'] as $event) {
                 'due_date'     => $dueDate,
                 'due_time'     => $dueTime,
                 'title'        => $saveTitle,
+                'tag'          => $tag,
                 'result'       => $parseResult,
             ]);
             if ($replyToken !== '') {
@@ -1336,6 +1505,9 @@ foreach ($data['events'] as $event) {
                     }
                 } elseif ($dueTime !== null) {
                     $msg .= "\n時刻：" . $dueTime;
+                }
+                if ($tag !== null) {
+                    $msg .= "\nタグ：#" . $tag;
                 }
                 line_reply($replyToken, $msg);
             }
@@ -1414,6 +1586,10 @@ foreach ($data['events'] as $event) {
             '⑤ 特定の日を確認',
             '・3月20日',
             '・3/20',
+            '',
+            '⑥ タグで絞り込む',
+            '・今日 資料送る #仕事　← 登録時にタグ付け',
+            '・#仕事　← タグ一覧を表示',
             '',
             '---',
             '',

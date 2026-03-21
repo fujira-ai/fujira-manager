@@ -163,9 +163,9 @@ final class TaskRepository
         return (int) $stmt->fetchColumn();
     }
 
-    public function create(int $ownerId, string $title, ?string $dueDate = null, ?string $dueTime = null): int
+    public function create(int $ownerId, string $title, ?string $dueDate = null, ?string $dueTime = null, ?string $tag = null): int
     {
-        $sql = 'INSERT INTO tasks (owner_id, title, status, source, due_date, due_time) VALUES (:owner_id, :title, :status, :source, :due_date, :due_time)';
+        $sql = 'INSERT INTO tasks (owner_id, title, status, source, due_date, due_time, tag) VALUES (:owner_id, :title, :status, :source, :due_date, :due_time, :tag)';
         $stmt = $this->db->pdo()->prepare($sql);
         $stmt->execute([
             'owner_id' => $ownerId,
@@ -174,7 +174,16 @@ final class TaskRepository
             'source'   => 'line',
             'due_date' => $dueDate,
             'due_time' => $dueTime,
+            'tag'      => $tag,
         ]);
         return (int) $this->db->pdo()->lastInsertId();
+    }
+
+    public function getOpenTasksByTag(int $ownerId, string $tag): array
+    {
+        $sql = 'SELECT id, title, due_date, due_time FROM tasks WHERE owner_id = :owner_id AND status = :status AND tag = :tag ORDER BY due_date ASC, due_time ASC, id DESC';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute(['owner_id' => $ownerId, 'status' => 'open', 'tag' => $tag]);
+        return $stmt->fetchAll();
     }
 }
