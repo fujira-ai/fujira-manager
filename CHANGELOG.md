@@ -4,6 +4,15 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.21-dev - 2026-03-21
+
+### Added
+- 自然言語タスク登録ログに `raw_text`・`date_pattern`・`time_pattern` を追加
+- 空タイトルで保存を拒否した際に `task parse rejected` ログを追加
+- 保存成功時に `task parse result` / `task parse fallback` ログを追加し、通常保存と fallback 保存を判別できるよう改善
+
+---
+
 ## v1.1.20-dev - 2026-03-21
 
 ### Fixed

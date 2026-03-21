@@ -1075,27 +1075,32 @@ foreach ($data['events'] as $event) {
 
         // Parse due_date from natural Japanese date prefixes
         // Order: specific → general (M月D日 / M/D before 今日 / 明日)
-        $dueDate   = null;
-        $dueTime   = null;
-        $saveTitle = $text;
-        $tz        = new DateTimeZone('Asia/Tokyo');
+        $dueDate      = null;
+        $dueTime      = null;
+        $saveTitle    = $text;
+        $tz           = new DateTimeZone('Asia/Tokyo');
+        $datePattern  = 'no_match';
 
         if (preg_match('/^(\d{1,2})月(\d{1,2})日(?:[ 　]*(?:夕方は?|朝は|昼は|夜は|は|に|で|から|まで|の)[ 　]*|[ 　]+)?(.+)$/u', $text, $dm)) {
-            $saveTitle = trim($dm[3]);
-            $year      = (int) (new DateTime('now', $tz))->format('Y');
-            $dueDate   = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
+            $saveTitle   = trim($dm[3]);
+            $year        = (int) (new DateTime('now', $tz))->format('Y');
+            $dueDate     = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
+            $datePattern = 'M月D日';
         } elseif (preg_match('/^(\d{1,2})\/(\d{1,2})(?:[ 　]*(?:夕方は?|朝は|昼は|夜は|は|に|で|から|まで|の)[ 　]*|[ 　]+)?(.+)$/u', $text, $dm)) {
-            $saveTitle = trim($dm[3]);
-            $year      = (int) (new DateTime('now', $tz))->format('Y');
-            $dueDate   = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
+            $saveTitle   = trim($dm[3]);
+            $year        = (int) (new DateTime('now', $tz))->format('Y');
+            $dueDate     = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
+            $datePattern = 'M/D';
         } elseif (preg_match('/^今日(?:[ 　]+|[ 　]*(?:夕方は?|朝は|昼は|夜は|の|は)[ 　]*)?(.+)$/u', $text, $dm)) {
-            $saveTitle = trim($dm[1]);
-            $dueDate   = (new DateTime('now', $tz))->format('Y-m-d');
+            $saveTitle   = trim($dm[1]);
+            $dueDate     = (new DateTime('now', $tz))->format('Y-m-d');
+            $datePattern = '今日';
         } elseif (preg_match('/^明日(?:[ 　]+|[ 　]*(?:夕方は?|朝は|昼は|夜は|の|は)[ 　]*)?(.+)$/u', $text, $dm)) {
-            $saveTitle = trim($dm[1]);
-            $d = new DateTime('now', $tz);
+            $saveTitle   = trim($dm[1]);
+            $d           = new DateTime('now', $tz);
             $d->modify('+1 day');
-            $dueDate = $d->format('Y-m-d');
+            $dueDate     = $d->format('Y-m-d');
+            $datePattern = '明日';
         }
 
         // Parse due_time from the start of saveTitle (leading time: C / A / B patterns)
@@ -1170,14 +1175,25 @@ foreach ($data['events'] as $event) {
 
         // Pre-save diagnostic log
         webhook_log('task parse result', [
-            'pattern'  => $timePattern,
-            'title'    => $saveTitle,
-            'due_date' => $dueDate,
-            'due_time' => $dueTime,
+            'raw_text'     => $text,
+            'date_pattern' => $datePattern,
+            'time_pattern' => $timePattern,
+            'due_date'     => $dueDate,
+            'due_time'     => $dueTime,
+            'title'        => $saveTitle,
         ]);
 
         if ($saveTitle === '') {
-            webhook_log('task skipped: empty title after prefix strip', ['text' => $text, 'owner_id' => $ownerId]);
+            webhook_log('task parse rejected', [
+                'raw_text'     => $text,
+                'date_pattern' => $datePattern,
+                'time_pattern' => $timePattern,
+                'due_date'     => $dueDate,
+                'due_time'     => $dueTime,
+                'title'        => '',
+                'result'       => 'rejected',
+                'reason'       => 'empty_title',
+            ]);
             if ($replyToken !== '') {
                 line_reply($replyToken, '内容を入力してください');
             }
@@ -1185,8 +1201,18 @@ foreach ($data['events'] as $event) {
         }
 
         try {
-            $taskId = $taskRepo->create($ownerId, $saveTitle, $dueDate, $dueTime);
+            $taskId      = $taskRepo->create($ownerId, $saveTitle, $dueDate, $dueTime);
+            $parseResult = ($dueDate === null && $dueTime === null) ? 'fallback_saved' : 'saved';
             webhook_log('task created', ['owner_id' => $ownerId, 'title' => $saveTitle, 'due_date' => $dueDate, 'due_time' => $dueTime, 'task_id' => $taskId]);
+            webhook_log($parseResult === 'fallback_saved' ? 'task parse fallback' : 'task parse result', [
+                'raw_text'     => $text,
+                'date_pattern' => $datePattern,
+                'time_pattern' => $timePattern,
+                'due_date'     => $dueDate,
+                'due_time'     => $dueTime,
+                'title'        => $saveTitle,
+                'result'       => $parseResult,
+            ]);
             if ($replyToken !== '') {
                 $msg = "登録しました:\n・" . $saveTitle;
                 if ($dueDate !== null) {
