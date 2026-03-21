@@ -125,6 +125,20 @@ function build_today_quick_reply(int $count): array
     return ['items' => $items];
 }
 
+function build_nodue_quick_reply(int $page, int $totalPages): array
+{
+    if ($totalPages <= 1) {
+        $items = [qr_item('一覧', '一覧'), qr_item('今日', '今日')];
+    } elseif ($page === 1) {
+        $items = [qr_item('次', '次'), qr_item('一覧', '一覧')];
+    } elseif ($page >= $totalPages) {
+        $items = [qr_item('前', '前'), qr_item('一覧', '一覧')];
+    } else {
+        $items = [qr_item('前', '前'), qr_item('次', '次'), qr_item('一覧', '一覧')];
+    }
+    return ['items' => $items];
+}
+
 /*
 |--------------------------------------------------------------------------
 | Task list page renderer
@@ -206,6 +220,39 @@ function render_task_list_page(
     }
 
     // Action footer
+    $firstNum = $offset + 1;
+    $lines[]  = '';
+    $lines[]  = '→ 完了する場合：「完了 ' . $firstNum . '」';
+    if ($page < $totalPages) {
+        $lines[] = '→ 続きを見る：「次」';
+    }
+
+    return implode("\n", $lines);
+}
+
+/*
+|--------------------------------------------------------------------------
+| No-due-date task list page renderer
+|--------------------------------------------------------------------------
+*/
+function render_nodue_list_page(array $allTasks, int $page): string
+{
+    $pageSize   = 5;
+    $total      = count($allTasks);
+    $totalPages = max(1, (int) ceil($total / $pageSize));
+    $page       = max(1, min($page, $totalPages));
+    $offset     = ($page - 1) * $pageSize;
+    $pageTasks  = array_slice($allTasks, $offset, $pageSize);
+
+    $header = ($totalPages > 1)
+        ? '期限なしタスク（' . $page . '/' . $totalPages . '）'
+        : '期限なしタスク（' . $total . '件）';
+
+    $lines = [$header, ''];
+    foreach ($pageTasks as $idx => $t) {
+        $lines[] = ($offset + $idx + 1) . '. ' . $t['title'];
+    }
+
     $firstNum = $offset + 1;
     $lines[]  = '';
     $lines[]  = '→ 完了する場合：「完了 ' . $firstNum . '」';
@@ -518,6 +565,7 @@ foreach ($data['events'] as $event) {
                             $state['last_list_page']      = $page;
                             $state['last_list_today']     = $listToday;
                             $state['last_list_tomorrow']  = $listTomorrow;
+                            $state['last_list_mode']      = 'all';
                             $convStateRepo->saveState($ownerId, $state);
                             webhook_log('list map save result', ['owner_id' => $ownerId, 'saved' => true]);
                         } catch (\Throwable $e) {
@@ -527,6 +575,46 @@ foreach ($data['events'] as $event) {
                 }
             } catch (\Throwable $e) {
                 webhook_log('task list failed', ['error' => $e->getMessage()]);
+                $replyText = 'タスク取得に失敗しました';
+            }
+        }
+        if ($replyToken !== '') {
+            line_reply($replyToken, $replyText, $quickReply);
+        }
+        continue;
+    }
+
+    // No-due-date task list command
+    if ($text === '期限なし' || $text === '未定') {
+        $replyText  = '期限なしタスクはありません。';
+        $quickReply = null;
+        if ($ownerId !== null && $taskRepo !== null) {
+            try {
+                $allTasks = $taskRepo->getAllNoDueDateTasksByOwner($ownerId);
+                if (!empty($allTasks)) {
+                    $map = [];
+                    foreach ($allTasks as $i => $t) {
+                        $map[(string)($i + 1)] = (int) $t['id'];
+                    }
+                    $page       = 1;
+                    $totalPages = max(1, (int) ceil(count($allTasks) / 5));
+                    $replyText  = render_nodue_list_page($allTasks, $page);
+                    $quickReply = build_nodue_quick_reply($page, $totalPages);
+
+                    if ($convStateRepo !== null) {
+                        try {
+                            $state                       = $convStateRepo->getState($ownerId);
+                            $state['last_task_list_map'] = $map;
+                            $state['last_list_page']     = $page;
+                            $state['last_list_mode']     = 'nodue';
+                            $convStateRepo->saveState($ownerId, $state);
+                        } catch (\Throwable $e) {
+                            webhook_log('nodue list state save failed', ['error' => $e->getMessage()]);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                webhook_log('nodue list failed', ['error' => $e->getMessage()]);
                 $replyText = 'タスク取得に失敗しました';
             }
         }
@@ -547,7 +635,28 @@ foreach ($data['events'] as $event) {
                 $lastToday    = $state['last_list_today'] ?? null;
                 $lastTomorrow = $state['last_list_tomorrow'] ?? null;
 
-                if ($currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
+                $listMode = $state['last_list_mode'] ?? 'all';
+                if ($listMode === 'nodue' && $currentPage > 0) {
+                    $allTasks   = $taskRepo->getAllNoDueDateTasksByOwner($ownerId);
+                    $totalPages = max(1, (int) ceil(count($allTasks) / 5));
+
+                    if ($currentPage >= $totalPages) {
+                        $replyText = 'これが最後のページです。';
+                    } else {
+                        $newPage = $currentPage + 1;
+                        $map     = [];
+                        foreach ($allTasks as $i => $t) {
+                            $map[(string)($i + 1)] = (int) $t['id'];
+                        }
+                        $replyText  = render_nodue_list_page($allTasks, $newPage);
+                        $quickReply = build_nodue_quick_reply($newPage, $totalPages);
+
+                        $state['last_task_list_map'] = $map;
+                        $state['last_list_page']     = $newPage;
+                        $convStateRepo->saveState($ownerId, $state);
+                    }
+                    webhook_log('next page (nodue)', ['owner_id' => $ownerId, 'page' => $currentPage, 'total_pages' => $totalPages]);
+                } elseif ($listMode !== 'nodue' && $currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
                     $allTasks   = $taskRepo->getOpenTasksByOwner($ownerId, $lastToday, $lastTomorrow);
                     $pageSize   = 5;
                     $totalPages = max(1, (int) ceil(count($allTasks) / $pageSize));
@@ -591,7 +700,27 @@ foreach ($data['events'] as $event) {
                 $lastToday    = $state['last_list_today'] ?? null;
                 $lastTomorrow = $state['last_list_tomorrow'] ?? null;
 
-                if ($currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
+                $listMode = $state['last_list_mode'] ?? 'all';
+                if ($listMode === 'nodue' && $currentPage > 0) {
+                    if ($currentPage <= 1) {
+                        $replyText = 'これが最初のページです。';
+                    } else {
+                        $allTasks   = $taskRepo->getAllNoDueDateTasksByOwner($ownerId);
+                        $newPage    = $currentPage - 1;
+                        $totalPages = max(1, (int) ceil(count($allTasks) / 5));
+                        $map        = [];
+                        foreach ($allTasks as $i => $t) {
+                            $map[(string)($i + 1)] = (int) $t['id'];
+                        }
+                        $replyText  = render_nodue_list_page($allTasks, $newPage);
+                        $quickReply = build_nodue_quick_reply($newPage, $totalPages);
+
+                        $state['last_task_list_map'] = $map;
+                        $state['last_list_page']     = $newPage;
+                        $convStateRepo->saveState($ownerId, $state);
+                    }
+                    webhook_log('prev page (nodue)', ['owner_id' => $ownerId, 'page' => $currentPage]);
+                } elseif ($listMode !== 'nodue' && $currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
                     if ($currentPage <= 1) {
                         $replyText = 'これが最初のページです。';
                     } else {
@@ -917,7 +1046,9 @@ foreach ($data['events'] as $event) {
         || $text === 'ヘルプ'
         || $text === '/help'
         || $text === '/brief'
-        || $text === 'ブリーフ');
+        || $text === 'ブリーフ'
+        || $text === '期限なし'
+        || $text === '未定');
 
     webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text, 'is_command' => $isCommand]);
 

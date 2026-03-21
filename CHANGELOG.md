@@ -4,6 +4,15 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.15-dev - 2026-03-21
+
+### Added
+- `期限なし` / `未定` コマンドを追加し、期限なしタスクのみを一覧表示できるよう改善
+- 期限なしタスク一覧に `次` / `前` によるページング対応を追加
+- 期限なし専用クイックリプライ（`build_nodue_quick_reply()`）を新設し、一覧・今日へ戻れるよう導線を調整
+
+---
+
 ## v1.1.14-dev - 2026-03-21
 
 ### Changed
