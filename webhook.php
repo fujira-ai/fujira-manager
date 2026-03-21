@@ -766,7 +766,7 @@ foreach ($data['events'] as $event) {
                         $convStateRepo->saveState($ownerId, $state);
                     }
                     webhook_log('next page (nodue)', ['owner_id' => $ownerId, 'page' => $currentPage, 'total_pages' => $totalPages]);
-                } elseif ($listMode !== 'nodue' && $listMode !== 'tag' && $currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
+                } elseif ($listMode === 'all' && $currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
                     $allTasks   = $taskRepo->getOpenTasksByOwner($ownerId, $lastToday, $lastTomorrow);
                     $pageSize   = 5;
                     $totalPages = max(1, (int) ceil(count($allTasks) / $pageSize));
@@ -853,7 +853,7 @@ foreach ($data['events'] as $event) {
                         $convStateRepo->saveState($ownerId, $state);
                     }
                     webhook_log('prev page (nodue)', ['owner_id' => $ownerId, 'page' => $currentPage]);
-                } elseif ($listMode !== 'nodue' && $listMode !== 'tag' && $currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
+                } elseif ($listMode === 'all' && $currentPage > 0 && $lastToday !== null && $lastTomorrow !== null) {
                     if ($currentPage <= 1) {
                         $replyText = 'これが最初のページです。';
                     } else {
@@ -905,19 +905,29 @@ foreach ($data['events'] as $event) {
         }
 
         // Resolve list number → task_id via conv_state
+        // Raw ID fallback is intentionally removed: if no map or key is missing, reject the request.
+        $resolvedTaskId = null;
         if ($ownerId !== null && $convStateRepo !== null) {
             try {
                 $state = $convStateRepo->getState($ownerId);
-                webhook_log('state loaded', ['owner_id' => $ownerId, 'state' => $state]);
                 $map   = $state['last_task_list_map'] ?? [];
                 if (isset($map[(string)$num])) {
-                    $taskId = (int) $map[(string)$num];
+                    $resolvedTaskId = (int) $map[(string)$num];
                 }
-                webhook_log('resolved taskId', ['input' => $num, 'resolved' => $taskId]);
+                webhook_log('resolved taskId', ['input' => $num, 'resolved' => $resolvedTaskId, 'map_size' => count($map)]);
             } catch (\Throwable $e) {
                 webhook_log('task command resolve failed', ['command' => 'complete', 'input' => $num, 'owner_id' => $ownerId, 'error' => $e->getMessage()]);
             }
         }
+
+        if ($resolvedTaskId === null) {
+            webhook_log('task complete rejected: no map entry', ['input' => $num, 'owner_id' => $ownerId]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, "「今日」や「一覧」で表示した後に「完了{$num}」と送ってください");
+            }
+            continue;
+        }
+        $taskId = $resolvedTaskId;
 
         $replyText = '該当するタスクが見つかりません';
         if ($ownerId !== null && $taskRepo !== null) {
@@ -1067,9 +1077,12 @@ foreach ($data['events'] as $event) {
                 $today      = $nowJst->format('Y-m-d');
                 $todayTasks = $taskRepo->getTodayTasksByOwner($ownerId, $today);
                 if (!empty($todayTasks)) {
+                    $map = [];
                     $lines = [$greeting, '', '今日のタスク:'];
                     foreach ($todayTasks as $i => $t) {
-                        $line = ($i + 1) . '. ' . $t['title'];
+                        $num  = $i + 1;
+                        $map[(string) $num] = (int) $t['id'];
+                        $line = $num . '. ' . $t['title'];
                         if (!empty($t['due_time'])) {
                             $line .= '（' . $t['due_time'] . '）';
                         }
@@ -1077,6 +1090,18 @@ foreach ($data['events'] as $event) {
                     }
                     $replyText  = implode("\n", $lines);
                     $quickReply = build_today_quick_reply(count($todayTasks));
+
+                    if ($convStateRepo !== null) {
+                        try {
+                            $state                       = $convStateRepo->getState($ownerId);
+                            $state['last_task_list_map'] = $map;
+                            $state['last_list_page']     = 1;
+                            $state['last_list_mode']     = 'today';
+                            $convStateRepo->saveState($ownerId, $state);
+                        } catch (\Throwable $e) {
+                            webhook_log('today map save failed', ['error' => $e->getMessage()]);
+                        }
+                    }
                 }
             } catch (\Throwable $e) {
                 webhook_log('task today failed', ['error' => $e->getMessage()]);
