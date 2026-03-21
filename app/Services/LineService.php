@@ -18,16 +18,21 @@ final class LineService
         return hash_equals($hash, $signature);
     }
 
-    public function pushMessage(string $lineUserId, string $message): void
+    public function pushMessage(string $lineUserId, string $message, ?array $quickReply = null): void
     {
         $accessToken = trim((string)($this->config['line']['channel_access_token'] ?? ''));
         if ($accessToken === '') {
             throw new \RuntimeException('LINE access token is empty');
         }
 
+        $msgObj = ['type' => 'text', 'text' => $message];
+        if ($quickReply !== null) {
+            $msgObj['quickReply'] = $quickReply;
+        }
+
         $payload = [
             'to'       => $lineUserId,
-            'messages' => [['type' => 'text', 'text' => $message]],
+            'messages' => [$msgObj],
         ];
 
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

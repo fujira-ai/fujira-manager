@@ -48,6 +48,8 @@ function build_brief_message(array $todayTasks, array $noneTasks): string
         }
         $sections[] = '';
         $sections[] = 'まずは「1」から進めてください。';
+        $sections[] = '';
+        $sections[] = '👉 1つ終わったら「完了1」で消せます';
         return implode("\n", $sections);
     }
 
@@ -103,8 +105,18 @@ foreach ($users as $user) {
             continue;
         }
 
-        $message = build_brief_message($todayTasks, $noneTasks);
-        $line->pushMessage($lineUserId, $message);
+        $message    = build_brief_message($todayTasks, $noneTasks);
+        $quickReply = null;
+        if (!empty($todayTasks)) {
+            $qrItems   = [];
+            $qrItems[] = ['type' => 'action', 'action' => ['type' => 'message', 'label' => '完了1', 'text' => '完了1']];
+            if (count($todayTasks) >= 2) {
+                $qrItems[] = ['type' => 'action', 'action' => ['type' => 'message', 'label' => '完了2', 'text' => '完了2']];
+            }
+            $qrItems[]  = ['type' => 'action', 'action' => ['type' => 'message', 'label' => '今日', 'text' => '今日']];
+            $quickReply = ['items' => $qrItems];
+        }
+        $line->pushMessage($lineUserId, $message, $quickReply);
         cron_log('morning brief sent', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
     } catch (\Throwable $e) {
         cron_log('morning brief failed', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId, 'error' => $e->getMessage()]);

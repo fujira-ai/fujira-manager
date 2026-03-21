@@ -112,7 +112,15 @@ foreach ($users as $user) {
             '',
             '「今日 やること1つ」',
             '',
-            'これだけでもOKです。',
+            '↓',
+            '',
+            '「今日」',
+            '',
+            '↓',
+            '',
+            '「完了1」',
+            '',
+            'これで一通り使えます。',
         ]);
 
         cron_log('onboarding followup push attempt', [

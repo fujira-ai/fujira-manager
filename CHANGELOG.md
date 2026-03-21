@@ -4,6 +4,19 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.13-dev - 2026-03-21
+
+### Changed
+- オンボーディング文を改善し、登録→確認→完了の流れが最初に分かるよう調整
+- フォローアップ文を3ステップ形式に変更し、初回利用導線を明確化
+- 朝・昼通知の末尾に完了導線を追加し、通知から次の行動へ繋がるよう改善
+- `LineService::pushMessage()` に quickReply オプションを追加
+
+### Added
+- 朝・昼通知に完了クイックリプライを追加（今日タスクが存在する場合のみ）
+
+---
+
 ## v1.1.12-dev - 2026-03-21
 
 ### Changed
