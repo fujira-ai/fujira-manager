@@ -4,6 +4,14 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.20-dev - 2026-03-21
+
+### Fixed
+- 「今日夜」「明日夕方」のように、日付語の後ろが時間帯ラベルだけの入力でタスク内容がない場合、内容入力エラーを返すよう修正
+- 食事語（夕飯・ランチ等）はこの判定対象に含めず、タイトルに残るよう維持
+
+---
+
 ## v1.1.19-dev - 2026-03-21
 
 ### Fixed

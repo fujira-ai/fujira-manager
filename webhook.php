@@ -1161,6 +1161,13 @@ foreach ($data['events'] as $event) {
         // Strip any remaining leading の from title
         $saveTitle = trim(preg_replace('/^の/u', '', $saveTitle));
 
+        // If the entire remaining title is just a time-of-day label (e.g. "今日夜", "明日夕方"),
+        // treat it as empty so the empty-title guard below rejects it.
+        // Food words (夕飯, ランチ, etc.) are intentionally excluded from this list.
+        if ($dueDate !== null && preg_match('/^(?:朝|昼|夕方|夜)は?$/u', $saveTitle)) {
+            $saveTitle = '';
+        }
+
         // Pre-save diagnostic log
         webhook_log('task parse result', [
             'pattern'  => $timePattern,
