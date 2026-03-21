@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>フジラマネージャー | 考えずにタスク管理できるLINE秘書</title>
+  <meta name="description" content="LINEで使える個人向けAI秘書。自然文でタスク登録、一覧・完了・通知・指定日検索・リッチメニューまでLINE内で完結。">
+  <style>
+    :root{
+      --bg:#f6f9ff;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#5b6472;
+      --line:#06c755;
+      --primary:#2563eb;
+      --accent:#0f172a;
+      --soft:#e8eefc;
+      --border:#dbe4f0;
+      --shadow:0 10px 30px rgba(15,23,42,.08);
+      --radius:22px;
+      --max:1100px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans JP",sans-serif;
+      color:var(--text);
+      background:linear-gradient(180deg,#f8fbff 0%,#f2f7ff 100%);
+      line-height:1.7;
+    }
+    a{color:inherit}
+    .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+    .hero{
+      padding:32px 0 72px;
+      background:
+        radial-gradient(circle at top right, rgba(37,99,235,.08), transparent 35%),
+        radial-gradient(circle at top left, rgba(6,199,85,.08), transparent 28%);
+    }
+    .topbar{
+      display:flex;justify-content:space-between;align-items:center;
+      gap:16px;margin-bottom:32px
+    }
+    .brand{
+      font-weight:800;font-size:20px;letter-spacing:.02em
+    }
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 14px;border:1px solid var(--border);background:#fff;border-radius:999px;
+      font-size:13px;color:var(--muted)
+    }
+    .hero-grid{
+      display:grid;grid-template-columns:1.15fr .85fr;gap:36px;align-items:center
+    }
+    h1{
+      font-size:clamp(34px,5vw,58px);
+      line-height:1.1;margin:0 0 18px;font-weight:900;letter-spacing:-.03em
+    }
+    .lead{
+      font-size:18px;color:var(--muted);margin:0 0 24px
+    }
+    .sublead{
+      margin:0 0 28px;color:var(--text);font-size:17px
+    }
+    .checks{
+      display:grid;gap:12px;margin:0 0 30px;padding:0;list-style:none
+    }
+    .checks li{
+      background:#fff;border:1px solid var(--border);border-radius:16px;padding:12px 14px;
+      box-shadow:var(--shadow);font-size:15px
+    }
+    .cta-row{
+      display:flex;flex-wrap:wrap;gap:14px;margin:0 0 18px
+    }
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:10px;
+      text-decoration:none;font-weight:800;border-radius:14px;padding:15px 22px;
+      transition:.2s transform ease,.2s opacity ease
+    }
+    .btn:hover{transform:translateY(-1px);opacity:.95}
+    .btn-primary{background:var(--line);color:#fff}
+    .btn-secondary{background:#fff;border:1px solid var(--border);color:var(--accent)}
+    .hero-note{font-size:13px;color:var(--muted)}
+    .phone{
+      background:#dfeaff;border-radius:34px;padding:18px;
+      box-shadow:0 20px 45px rgba(37,99,235,.16)
+    }
+    .phone-screen{
+      background:linear-gradient(180deg,#9cc4ff,#8eafe5);
+      border-radius:24px;padding:22px;min-height:560px;position:relative;overflow:hidden
+    }
+    .msg{
+      max-width:92%;background:#fff;border-radius:22px;padding:18px 18px 16px;
+      box-shadow:var(--shadow);font-size:15px;margin-bottom:16px
+    }
+    .msg h3{margin:0 0 8px;font-size:16px}
+    .msg ul{margin:8px 0 0 18px;padding:0}
+    .msg small{display:block;color:var(--muted);margin-top:10px}
+    .menu-bar{
+      display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-radius:18px;overflow:hidden;
+      box-shadow:var(--shadow);margin-top:22px
+    }
+    .menu-item{
+      text-align:center;color:#fff;font-weight:800;padding:16px 8px
+    }
+    .menu-item:nth-child(1){background:#2563eb}
+    .menu-item:nth-child(2){background:#0f9f45}
+    .menu-item:nth-child(3){background:#ff8a00}
+    section{padding:68px 0}
+    .section-head{
+      max-width:760px;margin:0 auto 34px;text-align:center
+    }
+    .eyebrow{
+      display:inline-block;font-size:13px;font-weight:800;letter-spacing:.08em;
+      color:var(--primary);text-transform:uppercase;margin-bottom:10px
+    }
+    h2{
+      font-size:clamp(28px,4vw,42px);
+      line-height:1.2;margin:0 0 14px;font-weight:900;letter-spacing:-.02em
+    }
+    .section-head p{margin:0;color:var(--muted);font-size:17px}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .card{
+      background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+      padding:24px;box-shadow:var(--shadow)
+    }
+    .card h3{margin:0 0 10px;font-size:20px}
+    .card p{margin:0;color:var(--muted)}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .step-num{
+      width:38px;height:38px;border-radius:999px;background:var(--soft);color:var(--primary);
+      display:flex;align-items:center;justify-content:center;font-weight:900;margin-bottom:16px
+    }
+    .feature-list{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+    .feature-list .card h3{font-size:18px}
+    .quote{
+      background:#0f172a;color:#fff;border-radius:28px;padding:34px;box-shadow:var(--shadow)
+    }
+    .quote p{margin:0;font-size:19px;line-height:1.8}
+    .timeline{
+      display:grid;grid-template-columns:repeat(2,1fr);gap:18px
+    }
+    .timeline .card ul{margin:12px 0 0 18px;padding:0}
+    .timeline .card li{margin-bottom:6px}
+    .cta{
+      background:linear-gradient(135deg,#0f172a,#17345f);
+      color:#fff;border-radius:30px;padding:38px;box-shadow:var(--shadow)
+    }
+    .cta-grid{display:grid;grid-template-columns:1fr .7fr;gap:28px;align-items:center}
+    .cta p{color:rgba(255,255,255,.84)}
+    .qr-box{
+      text-align:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+      border-radius:24px;padding:22px
+    }
+    .qr-box img{
+      width:100%;max-width:260px;height:auto;border-radius:16px;background:#fff;padding:10px
+    }
+    footer{
+      padding:28px 0 44px;color:var(--muted);font-size:14px;text-align:center
+    }
+    @media (max-width:900px){
+      .hero-grid,.steps,.grid-3,.feature-list,.timeline,.cta-grid{grid-template-columns:1fr}
+      .hero{padding-bottom:48px}
+      .phone-screen{min-height:auto}
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="wrap">
+      <div class="topbar">
+        <div class="brand">フジラマネージャー</div>
+        <div class="pill">正式版 v1.0 公開中</div>
+      </div>
+
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">LINEで使える個人向けAI秘書</div>
+          <h1>考えずに<br>タスク管理できる<br>LINE秘書</h1>
+          <p class="lead">やることは分かっているのに、何から手をつけるかで止まる。フジラマネージャーは、その迷いを減らして、行動までつなげます。</p>
+          <p class="sublead">高機能を盛り込むのではなく、毎日使える軽さを優先したタスク管理ツールです。登録・確認・完了・通知まで、LINEの中で完結します。</p>
+
+          <ul class="checks">
+            <li>自然文で登録。例：今日 13:30 歯医者 / 3月27日 家賃引落確認 / 20時10分にLINEチェック</li>
+            <li>朝・昼・前日・時間前アラートで、今やるべきことが自然に見える</li>
+            <li>一覧・完了・ページ送り・指定日検索・リッチメニューまでLINE内で完結</li>
+          </ul>
+
+          <div class="cta-row">
+            <a class="btn btn-primary" href="https://lin.ee/uuq45Ij">友だち追加して使う</a>
+            <a class="btn btn-secondary" href="#features">できることを見る</a>
+          </div>
+          <div class="hero-note">友だち追加後、すぐに1件タスクを送れば使い始められます。</div>
+        </div>
+
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="msg">
+              <h3>お昼の確認です。</h3>
+              未完了のタスクが6件あります。<br><br>
+              優先タスク：<br>
+              ・13:30 歯医者<br>
+              ・請求書確認<br>
+              ・開発作業
+              <small>この中から1つ進めましょう。</small>
+            </div>
+            <div class="msg">
+              <h3>明日の予定があります。</h3>
+              ・税理士に連絡（明日 10:00）<br>
+              ・家賃引落確認（明日）
+              <small>必要な準備があれば今日のうちにどうぞ。</small>
+            </div>
+            <div class="menu-bar">
+              <div class="menu-item">今日</div>
+              <div class="menu-item">一覧</div>
+              <div class="menu-item">ヘルプ</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Problem</div>
+        <h2>「やることは分かっているのに、動けない」</h2>
+        <p>それは意思が弱いのではなく、毎回考えさせられているからです。フジラマネージャーは、タスク管理を「考える作業」から「自然に動ける流れ」に変えます。</p>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>頭の中で散らかる</h3>
+          <p>やることが増えるほど、整理より先に疲れます。結果として、着手が遅れます。</p>
+        </div>
+        <div class="card">
+          <h3>何からやるか迷う</h3>
+          <p>優先順位を考えるだけで止まる。小さな判断の連続が、行動力を削ります。</p>
+        </div>
+        <div class="card">
+          <h3>後回しが積み上がる</h3>
+          <p>思い出した時には期限が近い。焦って片付ける癖が固定化しやすくなります。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">How it works</div>
+        <h2>LINEで送るだけ。すぐ使えます。</h2>
+        <p>複雑な入力は不要です。いつものLINEメッセージ感覚で送るだけで、タスク登録から一覧、完了、通知までつながります。</p>
+      </div>
+      <div class="steps">
+        <div class="card">
+          <div class="step-num">1</div>
+          <h3>自然文で登録</h3>
+          <p>今日・明日・3月27日・3/27・20時10分など、普段の言い方でタスクを登録できます。</p>
+        </div>
+        <div class="card">
+          <div class="step-num">2</div>
+          <h3>一覧で把握</h3>
+          <p>今日・今後の予定・期限なしに分かれて見やすく表示。件数が多くてもページ送りで確認できます。</p>
+        </div>
+        <div class="card">
+          <div class="step-num">3</div>
+          <h3>通知で動ける</h3>
+          <p>朝・昼・前日・時間前アラートで、今見るべきことが自然に届きます。考える前に動きやすくなります。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Features</div>
+        <h2>できること</h2>
+        <p>v1.0時点で、日常利用に必要な最小機能を揃えています。さらに開発環境では使いやすさを継続改善中です。</p>
+      </div>
+      <div class="feature-list">
+        <div class="card">
+          <h3>自然に登録</h3>
+          <p>日付・時間つきタスクも、期限なしタスクも、自然文で登録できます。`今日の20時10分にLINEチェック` のような入力にも対応。</p>
+        </div>
+        <div class="card">
+          <h3>一覧で整理</h3>
+          <p>未完了タスクをページ送りで確認。通し番号で完了できるので迷いません。クイックリプライで次/前も押しやすくしています。</p>
+        </div>
+        <div class="card">
+          <h3>指定日検索</h3>
+          <p>`3月20日` や `3/20` を送ると、その日の予定だけを確認できます。今日・明日だけでは足りない時に便利です。</p>
+        </div>
+        <div class="card">
+          <h3>朝・昼・前日通知</h3>
+          <p>1日の開始、途中、前日準備のタイミングで背中を押します。止まりやすい場面に合わせた通知設計です。</p>
+        </div>
+        <div class="card">
+          <h3>時間前アラート</h3>
+          <p>due_time がある当日タスクについて、予定時刻の10分前に通知。忘れやすい予定を直前で思い出せます。</p>
+        </div>
+        <div class="card">
+          <h3>LINEで完結</h3>
+          <p>新しいアプリを覚える必要はありません。リッチメニューも追加され、基本操作をLINEの延長で使えます。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="quote">
+        <p>フジラマネージャーが目指しているのは、タスク管理を頑張ることではありません。<br>「自然に動ける状態」を毎日に作ることです。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Update</div>
+        <h2>v1.0公開までに進んだ改善</h2>
+        <p>単なる初期版ではなく、実運用の違和感を潰しながら正式版として整えています。</p>
+      </div>
+      <div class="timeline">
+        <div class="card">
+          <h3>v1.0で実装済み</h3>
+          <ul>
+            <li>オンボーディングメッセージ</li>
+            <li>未操作ユーザーへの1時間後フォローアップ</li>
+            <li>一覧のページ送りと行動導線</li>
+            <li>リッチメニュー（今日 / 一覧 / ヘルプ）</li>
+            <li>時間帯に応じた「今日」コマンドの挨拶</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>開発環境で継続改善中</h3>
+          <ul>
+            <li>自然言語登録の精度向上（M/D、助詞つき、文中時刻、時分表現）</li>
+            <li>指定日検索（3月20日 / 3/20）</li>
+            <li>時間前アラート（当日10分前通知）</li>
+            <li>一覧クイックリプライによるページ送り改善</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="cta">
+        <div class="cta-grid">
+          <div>
+            <div class="eyebrow" style="color:#93c5fd;">Start now</div>
+            <h2 style="margin-top:0;">友だち追加して、今日から使う</h2>
+            <p>LINEで友だち追加するだけで始められます。難しい設定は不要です。まずは1つ、タスクを送ってみてください。</p>
+            <div class="cta-row" style="margin-bottom:10px;">
+              <a class="btn btn-primary" href="https://lin.ee/uuq45Ij">友だち追加はこちら</a>
+              <a class="btn btn-secondary" href="https://lin.ee/uuq45Ij" style="color:#fff;border-color:rgba(255,255,255,.25);background:transparent;">URLを開く</a>
+            </div>
+            <p style="margin:10px 0 0;font-size:14px;color:rgba(255,255,255,.72);">友だち追加URL： https://lin.ee/uuq45Ij</p>
+          </div>
+          <div class="qr-box">
+            <img src="L_gainfriends_2dbarcodes_GW.png" alt="フジラマネージャー 友だち追加用QRコード">
+            <div style="margin-top:10px;font-size:14px;color:rgba(255,255,255,.8);">QRコードから友だち追加</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    フジラマネージャー — 機能ではなく習慣を作るLINE秘書
+  </footer>
+</body>
+</html>
