@@ -4,6 +4,14 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.16-dev - 2026-03-21
+
+### Improved
+- 「3月31日銀行処理」のような助詞なし入力でも、日付とタイトルを正しく分離できるよう改善
+- 「3月31日は」「3月31日から」などの助詞付きパターンの解析精度を向上
+
+---
+
 ## v1.1.15-dev - 2026-03-21
 
 ### Added

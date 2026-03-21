@@ -1080,11 +1080,11 @@ foreach ($data['events'] as $event) {
         $saveTitle = $text;
         $tz        = new DateTimeZone('Asia/Tokyo');
 
-        if (preg_match('/^(\d{1,2})月(\d{1,2})日(?:[ 　]+|の)(.+)$/u', $text, $dm)) {
+        if (preg_match('/^(\d{1,2})月(\d{1,2})日(?:[ 　]*(?:は|に|で|から|まで|の)[ 　]*|[ 　]+)?(.+)$/u', $text, $dm)) {
             $saveTitle = trim($dm[3]);
             $year      = (int) (new DateTime('now', $tz))->format('Y');
             $dueDate   = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
-        } elseif (preg_match('/^(\d{1,2})\/(\d{1,2})[ 　]+(.+)$/u', $text, $dm)) {
+        } elseif (preg_match('/^(\d{1,2})\/(\d{1,2})(?:[ 　]*(?:は|に|で|から|まで|の)[ 　]*|[ 　]+)?(.+)$/u', $text, $dm)) {
             $saveTitle = trim($dm[3]);
             $year      = (int) (new DateTime('now', $tz))->format('Y');
             $dueDate   = sprintf('%04d-%02d-%02d', $year, (int) $dm[1], (int) $dm[2]);
