@@ -4,6 +4,14 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.1.17-dev - 2026-03-21
+
+### Fixed
+- 「今日夕飯はしんぱち」「明日昼は打ち合わせ」のように、日付語の直後に時間帯ラベル（朝・昼・夕方・夜・夕飯）が来る入力でも、due_date と title を正しく分離できるよう自然言語パースを改善
+- 1字ラベル（朝・昼・夜）は `は` を必須とし、「朝活」などの誤検知を防ぐよう調整
+
+---
+
 ## v1.1.16-dev - 2026-03-21
 
 ### Improved
