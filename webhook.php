@@ -1364,7 +1364,10 @@ foreach ($data['events'] as $event) {
         || $text === '期限なし'
         || $text === '未定'
         || $text === '登録する'
-        || $text === 'やめる');
+        || $text === 'やめる'
+        || $text === '解約'
+        || $text === 'プラン'
+        || $text === '課金');
 
     webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text, 'is_command' => $isCommand]);
 
@@ -1768,6 +1771,16 @@ foreach ($data['events'] as $event) {
             '・リッチメニューからも操作できます',
         ]);
         line_reply($replyToken, $helpText);
+        continue;
+    }
+
+    if ($text === '解約' || $text === 'プラン' || $text === '課金') {
+        $portalUrl = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
+            . '/stripe/portal.php?uid=' . urlencode($lineUserId);
+        line_reply($replyToken, implode("\n", [
+            '有料プランの確認・解約はこちらから行えます👇',
+            $portalUrl,
+        ]));
         continue;
     }
 

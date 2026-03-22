@@ -4,6 +4,23 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.4-dev - 2026-03-23
+
+### Added
+- Stripe Customer Portal を利用した解約導線を追加
+- stripe/portal.php を新規作成
+  - stripe_customer_id を元に Billing Portal Session を生成
+  - 303 リダイレクトで Portal に遷移
+
+### Changed
+- LINE の「解約」「プラン」「課金」コマンドで
+  Customer Portal への導線を追加
+
+### Security
+- portal.php にてユーザーIDの簡易検証を追加
+
+/---
+
 ## v1.3.3-dev - 2026-03-23
 
 ### Fixed
