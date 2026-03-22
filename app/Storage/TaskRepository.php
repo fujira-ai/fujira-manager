@@ -186,4 +186,19 @@ final class TaskRepository
         $stmt->execute(['owner_id' => $ownerId, 'status' => 'open', 'tag' => $tag]);
         return $stmt->fetchAll();
     }
+
+    public function countMonthlyCreatedByOwner(int $ownerId, string $monthStart, string $nextMonthStart): int
+    {
+        $sql = 'SELECT COUNT(*) FROM tasks
+                WHERE owner_id = :owner_id
+                  AND created_at >= :month_start
+                  AND created_at < :next_month_start';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute([
+            'owner_id'         => $ownerId,
+            'month_start'      => $monthStart,
+            'next_month_start' => $nextMonthStart,
+        ]);
+        return (int) $stmt->fetchColumn();
+    }
 }

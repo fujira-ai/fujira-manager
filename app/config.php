@@ -1,7 +1,20 @@
 <?php
 declare(strict_types=1);
 
-return [
+/*
+|--------------------------------------------------------------------------
+| Load secret overrides (not in git)
+|--------------------------------------------------------------------------
+| app/config.secret.php can override any key in this file.
+| Copy config.secret.php.example → config.secret.php and fill in values.
+*/
+$_secret = [];
+$_secretFile = __DIR__ . '/config.secret.php';
+if (is_file($_secretFile)) {
+    $_secret = require $_secretFile;
+}
+
+return array_replace_recursive([
 
     /*
     |--------------------------------------------------------------------------
@@ -55,4 +68,19 @@ return [
         'log_dir' => __DIR__ . '/../logs',
     ],
 
-];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Stripe
+    |--------------------------------------------------------------------------
+    | Set real values in app/config.secret.php (excluded from git).
+    */
+
+    'stripe' => [
+        'secret_key'      => '',
+        'webhook_secret'  => '',
+        'price_id'        => '',
+        'free_task_limit' => 30,
+    ],
+
+], $_secret);

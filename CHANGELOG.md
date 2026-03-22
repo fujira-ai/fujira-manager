@@ -4,6 +4,18 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.1-dev - 2026-03-22
+
+### Added
+- 無料ユーザーが当月25件以上登録した際に、一度だけ事前課金警告を送る導線を追加
+- users テーブルに warned_limit カラムを追加
+
+### Changed
+- 無料枠（月30件）超過時の課金案内メッセージを改善
+- 有料プランの価値（無制限・自動リマインド・抜け漏れ防止）が伝わる文面に調整
+
+---
+
 ## v1.3.0-dev - 2026-03-22
 
 ### Added

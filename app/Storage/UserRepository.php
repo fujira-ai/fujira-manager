@@ -49,4 +49,59 @@ final class UserRepository
         ]);
         return (int) $this->db->pdo()->lastInsertId();
     }
+
+    public function findById(int $id): ?array
+    {
+        $sql  = 'SELECT * FROM users WHERE id = :id LIMIT 1';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    public function findByStripeCustomerId(string $customerId): ?array
+    {
+        $sql  = 'SELECT * FROM users WHERE stripe_customer_id = :cid LIMIT 1';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute(['cid' => $customerId]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    public function updateWarnedLimit(int $ownerId): void
+    {
+        $sql  = 'UPDATE users SET warned_limit = 1, updated_at = NOW() WHERE id = :id';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute(['id' => $ownerId]);
+    }
+
+    /**
+     * Update billing-related columns only.
+     * Accepted keys: is_paid, subscription_status, subscription_expires_at,
+     *                stripe_customer_id, stripe_subscription_id
+     */
+    public function updateSubscription(int $ownerId, array $data): void
+    {
+        $allowed = [
+            'is_paid',
+            'subscription_status',
+            'subscription_expires_at',
+            'stripe_customer_id',
+            'stripe_subscription_id',
+        ];
+        $sets   = [];
+        $params = ['id' => $ownerId];
+        foreach ($allowed as $col) {
+            if (array_key_exists($col, $data)) {
+                $sets[]       = "{$col} = :{$col}";
+                $params[$col] = $data[$col];
+            }
+        }
+        if (empty($sets)) {
+            return;
+        }
+        $sql  = 'UPDATE users SET ' . implode(', ', $sets) . ', updated_at = NOW() WHERE id = :id';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute($params);
+    }
 }

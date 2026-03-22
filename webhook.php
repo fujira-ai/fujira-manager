@@ -92,6 +92,59 @@ function line_reply(string $replyToken, string $message, ?array $quickReply = nu
 
 /*
 |--------------------------------------------------------------------------
+| LINE push helper (for follow-up messages after reply token is used)
+|--------------------------------------------------------------------------
+*/
+function line_push(string $userId, string $message): void
+{
+    global $config;
+
+    $accessToken = trim((string)($config['line']['channel_access_token'] ?? ''));
+    if ($accessToken === '') {
+        webhook_log('LINE access token is empty');
+        return;
+    }
+
+    $url     = 'https://api.line.me/v2/bot/message/push';
+    $payload = [
+        'to'       => $userId,
+        'messages' => [['type' => 'text', 'text' => $message]],
+    ];
+
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        webhook_log('line_push json_encode failed', ['json_error' => json_last_error_msg()]);
+        return;
+    }
+
+    $headers = [
+        'Content-Type: application/json; charset=UTF-8',
+        'Authorization: Bearer ' . $accessToken,
+        'Content-Length: ' . strlen($json),
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+
+    $response  = curl_exec($ch);
+    $httpCode  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    webhook_log('LINE push result', [
+        'http_code'  => $httpCode,
+        'curl_error' => $curlError,
+        'response'   => $response,
+    ]);
+}
+
+/*
+|--------------------------------------------------------------------------
 | Quick reply helpers — list paging only
 |--------------------------------------------------------------------------
 */
@@ -151,6 +204,22 @@ function build_tag_quick_reply(int $page, int $totalPages): array
         $items = [qr_item('前', '前'), qr_item('次', '次'), qr_item('一覧', '一覧')];
     }
     return ['items' => $items];
+}
+
+/*
+|--------------------------------------------------------------------------
+| Billing helper
+|--------------------------------------------------------------------------
+*/
+function is_paid_user(array $user): bool
+{
+    if (!(bool) ($user['is_paid'] ?? false)) {
+        return false;
+    }
+    if (empty($user['subscription_expires_at'])) {
+        return false;
+    }
+    return (new DateTime($user['subscription_expires_at'])) > new DateTime();
 }
 
 /*
@@ -1456,6 +1525,54 @@ foreach ($data['events'] as $event) {
             continue;
         }
 
+        // Free tier check: count current-month tasks and reject if over limit
+        if ($ownerId !== null && $userRepo !== null && $taskRepo !== null) {
+            try {
+                $billingUser = $userRepo->findById($ownerId);
+                if ($billingUser !== null && !is_paid_user($billingUser)) {
+                    $now            = new DateTime('now', $tz);
+                    $monthStart     = $now->format('Y-m-01 00:00:00');
+                    $nextMonthStart = (clone $now)->modify('first day of next month')->format('Y-m-01 00:00:00');
+                    $limit          = (int) ($config['stripe']['free_task_limit'] ?? 30);
+                    $monthlyCount   = $taskRepo->countMonthlyCreatedByOwner($ownerId, $monthStart, $nextMonthStart);
+                    if ($monthlyCount >= $limit) {
+                        $checkoutUrl = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
+                            . '/stripe/checkout.php?uid=' . urlencode($lineUserId);
+                        webhook_log('free limit reached', ['owner_id' => $ownerId, 'count' => $monthlyCount]);
+                        if ($replyToken !== '') {
+                            line_reply($replyToken, implode("\n", [
+                                '無料枠（月30件）を使い切りました。',
+                                '',
+                                'このまま使い続けるには',
+                                '有料プラン（月額980円）が必要です。',
+                                '',
+                                '▼有料プランでできること',
+                                '・タスク無制限',
+                                '・自動リマインド',
+                                '・抜け漏れ防止',
+                                '',
+                                '1日あたり約32円で使えます。',
+                                '',
+                                '👇30秒で登録できます',
+                                $checkoutUrl,
+                            ]));
+                        }
+                        continue;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // fail-closed: billing check errors must NOT allow task creation
+                webhook_log('billing check failed', ['error' => $e->getMessage(), 'owner_id' => $ownerId]);
+                if ($replyToken !== '') {
+                    line_reply($replyToken, implode("\n", [
+                        '現在、課金状態の確認に失敗しました。',
+                        '時間をおいて再度お試しください。',
+                    ]));
+                }
+                continue;
+            }
+        }
+
         // Time conflict check: only when both due_date and due_time are set
         if ($dueDate !== null && $dueTime !== null && $convStateRepo !== null) {
             try {
@@ -1535,6 +1652,32 @@ foreach ($data['events'] as $event) {
                     $msg .= "\nタグ：#" . $tag;
                 }
                 line_reply($replyToken, $msg);
+            }
+
+            // 25件事前警告：保存成功後・無料ユーザー・1回限り
+            if (isset($billingUser, $monthlyCount)
+                && $billingUser !== null
+                && !is_paid_user($billingUser)
+                && ($monthlyCount + 1) >= 25
+                && !(bool) ($billingUser['warned_limit'] ?? false)
+            ) {
+                $warnUrl = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
+                    . '/stripe/checkout.php?uid=' . urlencode($lineUserId);
+                $userRepo->updateWarnedLimit($ownerId);
+                webhook_log('free limit warning sent', ['owner_id' => $ownerId, 'count' => $monthlyCount + 1]);
+                line_push($lineUserId, implode("\n", [
+                    'あと5件で無料枠が終了します。',
+                    '',
+                    '継続して使う場合は',
+                    '有料プラン（月額980円）がおすすめです。',
+                    '',
+                    '▼有料プラン',
+                    '・タスク無制限',
+                    '・自動管理',
+                    '',
+                    '👇今のうちに登録しておくと安心です',
+                    $warnUrl,
+                ]));
             }
         } catch (\Throwable $e) {
             webhook_log('task create failed', ['error' => $e->getMessage()]);
