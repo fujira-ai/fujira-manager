@@ -3,16 +3,19 @@
 All notable changes to Fujira Manager will be documented in this file.
 
 ---
-
 ## v1.3.6-dev - 2026-03-23
 
 ### Fixed
-- `customer.subscription.updated` / `customer.subscription.deleted` で `current_period_end` が未取得のとき、`subscription_expires_at` に `1970-01-01 09:00:00` が保存される問題を修正
-- `stripe_period_end_to_datetime()` ヘルパーを追加し、0以下のUnix timestampを無効値として扱うよう改善
-- `expires_at` が無効な場合は `subscription_expires_at` を更新せず、既存値を維持するよう修正
+- `customer.subscription.updated` / `customer.subscription.deleted` で `current_period_end` 未取得時に `subscription_expires_at` が 1970-01-01 になる問題を修正
+- `stripe_period_end_to_datetime()` を追加し、無効なUnix timestampを保存しないよう改善
+- 有効な期限が取得できない場合は既存の `subscription_expires_at` を維持するよう修正
 
-### Changed
-- Stripe解約後も `subscription_expires_at` までは利用可能という既存仕様を壊さないよう、Webhookの期限更新処理を安定化
+### Improved
+- 解約後も `subscription_expires_at` まで利用可能な仕様を安定化
+- Stripe Webhook の期限管理ロジックを堅牢化
+
+### Confirmed
+- サブスク登録 → 解約 → 期限まで利用 → 無料枠制限再開 の一連のフローが正常動作することを確認
 
 ---
 
