@@ -1537,7 +1537,7 @@ foreach ($data['events'] as $event) {
                     $monthlyCount   = $taskRepo->countMonthlyCreatedByOwner($ownerId, $monthStart, $nextMonthStart);
                     if ($monthlyCount >= $limit) {
                         $checkoutUrl = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
-                            . '/stripe/checkout.php?uid=' . urlencode($lineUserId);
+                            . '/upgrade.php?uid=' . urlencode($lineUserId);
                         webhook_log('free limit reached', ['owner_id' => $ownerId, 'count' => $monthlyCount]);
                         if ($replyToken !== '') {
                             line_reply($replyToken, implode("\n", [
@@ -1662,7 +1662,7 @@ foreach ($data['events'] as $event) {
                 && !(bool) ($billingUser['warned_limit'] ?? false)
             ) {
                 $warnUrl = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
-                    . '/stripe/checkout.php?uid=' . urlencode($lineUserId);
+                    . '/upgrade.php?uid=' . urlencode($lineUserId);
                 $userRepo->updateWarnedLimit($ownerId);
                 webhook_log('free limit warning sent', ['owner_id' => $ownerId, 'count' => $monthlyCount + 1]);
                 line_push($lineUserId, implode("\n", [

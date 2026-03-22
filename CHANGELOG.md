@@ -4,6 +4,18 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.2-dev - 2026-03-23
+
+### Changed
+- LINEの課金導線を Stripe Checkout 直リンクから LP（upgrade.php）経由に変更
+  - 無料枠超過メッセージのURLを /upgrade.php?uid= に変更
+  - 25件到達時の事前警告メッセージのURLを /upgrade.php?uid= に変更
+
+### Improvement
+- 課金導線にLPを挟むことで、課金率（CV率）の改善を狙う構成に変更
+
+---
+
 ## v1.3.1-dev - 2026-03-22
 
 ### Added
