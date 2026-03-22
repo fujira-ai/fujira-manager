@@ -32,6 +32,20 @@ function stripe_log(string $message, array $context = []): void
 
 /*
 |--------------------------------------------------------------------------
+| Helper: safely convert a Stripe Unix timestamp to datetime string
+|--------------------------------------------------------------------------
+*/
+function stripe_period_end_to_datetime(mixed $value): ?string
+{
+    $ts = (int) $value;
+    if ($ts <= 0) {
+        return null;
+    }
+    return date('Y-m-d H:i:s', $ts);
+}
+
+/*
+|--------------------------------------------------------------------------
 | Validate config
 |--------------------------------------------------------------------------
 */
@@ -145,18 +159,18 @@ try {
         case 'customer.subscription.updated':
             $sub        = $event->data->object;
             $customerId = $sub->customer;
-            $expiresAt  = date('Y-m-d H:i:s', (int) $sub->current_period_end);
+            $expiresAt  = stripe_period_end_to_datetime($sub->current_period_end ?? null);
             $user       = $userRepo->findByStripeCustomerId($customerId);
             if ($user !== null) {
-                $userRepo->updateSubscription((int) $user['id'], [
-                    'subscription_status'     => $sub->status,
-                    'subscription_expires_at' => $expiresAt,
-                    // is_paid intentionally not updated
-                ]);
+                $payload = ['subscription_status' => $sub->status];
+                if ($expiresAt !== null) {
+                    $payload['subscription_expires_at'] = $expiresAt;
+                }
+                $userRepo->updateSubscription((int) $user['id'], $payload);
                 stripe_log('subscription updated', [
                     'owner_id'   => $user['id'],
                     'status'     => $sub->status,
-                    'expires_at' => $expiresAt,
+                    'expires_at' => $expiresAt ?? 'not updated',
                 ]);
             }
             break;
@@ -170,17 +184,17 @@ try {
         case 'customer.subscription.deleted':
             $sub        = $event->data->object;
             $customerId = $sub->customer;
-            $expiresAt  = date('Y-m-d H:i:s', (int) $sub->current_period_end);
+            $expiresAt  = stripe_period_end_to_datetime($sub->current_period_end ?? null);
             $user       = $userRepo->findByStripeCustomerId($customerId);
             if ($user !== null) {
-                $userRepo->updateSubscription((int) $user['id'], [
-                    'subscription_status'     => 'canceled',
-                    'subscription_expires_at' => $expiresAt,
-                    // is_paid intentionally not updated
-                ]);
+                $payload = ['subscription_status' => 'canceled'];
+                if ($expiresAt !== null) {
+                    $payload['subscription_expires_at'] = $expiresAt;
+                }
+                $userRepo->updateSubscription((int) $user['id'], $payload);
                 stripe_log('subscription deleted', [
                     'owner_id'   => $user['id'],
-                    'expires_at' => $expiresAt,
+                    'expires_at' => $expiresAt ?? 'not updated',
                 ]);
             }
             break;

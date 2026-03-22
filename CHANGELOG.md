@@ -4,20 +4,33 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.6-dev - 2026-03-23
+
+### Fixed
+- `customer.subscription.updated` / `customer.subscription.deleted` で `current_period_end` が未取得のとき、`subscription_expires_at` に `1970-01-01 09:00:00` が保存される問題を修正
+- `stripe_period_end_to_datetime()` ヘルパーを追加し、0以下のUnix timestampを無効値として扱うよう改善
+- `expires_at` が無効な場合は `subscription_expires_at` を更新せず、既存値を維持するよう修正
+
+### Changed
+- Stripe解約後も `subscription_expires_at` までは利用可能という既存仕様を壊さないよう、Webhookの期限更新処理を安定化
+
+---
+
 ## v1.3.5-dev - 2026-03-23
 
 ### Added
 - 課金・解約導線用のワンタイムトークン管理テーブル `user_tokens` を追加
 - TokenRepository を追加し、purpose付き短命トークンを発行・消費できるよう改善
+- TokenRepository に `validateToken()` を追加し、GET時はトークン検証のみ行えるよう改善
 
 ### Changed
-- `upgrade.php` を token 方式に変更し、Stripe Checkout Session を直接生成するよう改善
-- `stripe/portal.php` を token 方式に変更
+- `upgrade.php` を token 方式に変更し、GETではLP表示、POSTでStripe Checkout Sessionを生成するよう改善
+- `stripe/portal.php` を token 方式に変更し、GETでは確認画面、POSTでBilling Portal Sessionを生成するよう改善
 - LINEの課金導線・解約導線で LINE user_id をURLに出さないよう改善
 
-### Security
-- LINE user_id をURLに含めない設計へ全面移行
-- トークンは10分で失効し、使用後は即削除
+### Fixed
+- LINEリンクプレビューによる先行GETでワンタイムトークンが消費される問題を修正
+- ユーザーの実操作（POST）時のみトークンを消費するよう変更
 
 ---
 
