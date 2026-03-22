@@ -4,6 +4,29 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.0-dev - 2026-03-22
+
+### Added
+- Stripe Checkout による月額980円の有料プランを追加
+- 無料プランは当月30件までタスク登録可能、超過時に課金案内を送信
+- 有料ユーザーはタスク登録無制限
+- users テーブルに課金関連カラムを追加
+  （is_paid / subscription_status / subscription_expires_at / stripe_customer_id / stripe_subscription_id）
+- app/config.secret.php による秘匿情報の外部管理（git 管理外）
+- stripe/checkout.php — Checkout セッション開始エンドポイント
+- stripe/webhook.php — Stripe Webhook 受信・署名検証・DB更新
+- stripe/success.php / cancel.php — 決済後ランディングページ
+- UserRepository に findById() / findByStripeCustomerId() / updateSubscription() を追加
+- TaskRepository に countMonthlyCreatedByOwner() を追加（range 検索）
+
+### Changed
+- タスク登録時に無料枠30件の判定を追加
+- 無料枠超過時は保存せず課金案内を返すよう調整
+- customer.subscription.updated / deleted では is_paid を即時変更せず、subscription_expires_at までは有料扱いを継続するよう修正
+- 有料判定を is_paid=1 かつ subscription_expires_at > now() の複合条件に統一
+
+---
+
 ## v1.2.1-dev - 2026-03-21
 
 ### Fixed
