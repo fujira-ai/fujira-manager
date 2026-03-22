@@ -480,11 +480,13 @@ webhook_log('Webhook received', ['events_count' => count($data['events'])]);
 $userRepo      = null;
 $taskRepo      = null;
 $convStateRepo = null;
+$tokenRepo     = null;
 try {
     $db            = new \FujiraManager\Storage\Database($config['db']);
     $userRepo      = new \FujiraManager\Storage\UserRepository($db);
     $taskRepo      = new \FujiraManager\Storage\TaskRepository($db);
     $convStateRepo = new \FujiraManager\Storage\ConvStateRepository($db);
+    $tokenRepo     = new \FujiraManager\Storage\TokenRepository($db);
 } catch (\Throwable $e) {
     webhook_log('DB init failed', ['error' => $e->getMessage()]);
 }
@@ -1539,26 +1541,31 @@ foreach ($data['events'] as $event) {
                     $limit          = (int) ($config['stripe']['free_task_limit'] ?? 30);
                     $monthlyCount   = $taskRepo->countMonthlyCreatedByOwner($ownerId, $monthStart, $nextMonthStart);
                     if ($monthlyCount >= $limit) {
-                        $checkoutUrl = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
-                            . '/upgrade.php?uid=' . urlencode($lineUserId);
                         webhook_log('free limit reached', ['owner_id' => $ownerId, 'count' => $monthlyCount]);
                         if ($replyToken !== '') {
-                            line_reply($replyToken, implode("\n", [
-                                '無料枠（月30件）を使い切りました。',
-                                '',
-                                'このまま使い続けるには',
-                                '有料プラン（月額980円）が必要です。',
-                                '',
-                                '▼有料プランでできること',
-                                '・タスク無制限',
-                                '・自動リマインド',
-                                '・抜け漏れ防止',
-                                '',
-                                '1日あたり約32円で使えます。',
-                                '',
-                                '👇30秒で登録できます',
-                                $checkoutUrl,
-                            ]));
+                            if ($tokenRepo === null) {
+                                line_reply($replyToken, '現在、課金ページの生成に失敗しました。時間をおいて再度お試しください。');
+                            } else {
+                                $upgradeToken = $tokenRepo->createToken($ownerId, 'upgrade', new DateTimeImmutable('+10 minutes'));
+                                $checkoutUrl  = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
+                                    . '/upgrade.php?token=' . urlencode($upgradeToken);
+                                line_reply($replyToken, implode("\n", [
+                                    '無料枠（月30件）を使い切りました。',
+                                    '',
+                                    'このまま使い続けるには',
+                                    '有料プラン（月額980円）が必要です。',
+                                    '',
+                                    '▼有料プランでできること',
+                                    '・タスク無制限',
+                                    '・自動リマインド',
+                                    '・抜け漏れ防止',
+                                    '',
+                                    '1日あたり約32円で使えます。',
+                                    '',
+                                    '👇30秒で登録できます',
+                                    $checkoutUrl,
+                                ]));
+                            }
                         }
                         continue;
                     }
@@ -1664,23 +1671,28 @@ foreach ($data['events'] as $event) {
                 && ($monthlyCount + 1) >= 25
                 && !(bool) ($billingUser['warned_limit'] ?? false)
             ) {
-                $warnUrl = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
-                    . '/upgrade.php?uid=' . urlencode($lineUserId);
                 $userRepo->updateWarnedLimit($ownerId);
                 webhook_log('free limit warning sent', ['owner_id' => $ownerId, 'count' => $monthlyCount + 1]);
-                line_push($lineUserId, implode("\n", [
-                    'あと5件で無料枠が終了します。',
-                    '',
-                    '継続して使う場合は',
-                    '有料プラン（月額980円）がおすすめです。',
-                    '',
-                    '▼有料プラン',
-                    '・タスク無制限',
-                    '・自動管理',
-                    '',
-                    '👇今のうちに登録しておくと安心です',
-                    $warnUrl,
-                ]));
+                if ($tokenRepo !== null) {
+                    $warnToken = $tokenRepo->createToken($ownerId, 'upgrade', new DateTimeImmutable('+10 minutes'));
+                    $warnUrl   = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
+                        . '/upgrade.php?token=' . urlencode($warnToken);
+                    line_push($lineUserId, implode("\n", [
+                        'あと5件で無料枠が終了します。',
+                        '',
+                        '継続して使う場合は',
+                        '有料プラン（月額980円）がおすすめです。',
+                        '',
+                        '▼有料プラン',
+                        '・タスク無制限',
+                        '・自動管理',
+                        '',
+                        '👇今のうちに登録しておくと安心です',
+                        $warnUrl,
+                    ]));
+                } else {
+                    line_push($lineUserId, '現在、課金ページの生成に失敗しました。時間をおいて再度お試しください。');
+                }
             }
         } catch (\Throwable $e) {
             webhook_log('task create failed', ['error' => $e->getMessage()]);
@@ -1775,12 +1787,17 @@ foreach ($data['events'] as $event) {
     }
 
     if ($text === '解約' || $text === 'プラン' || $text === '課金') {
-        $portalUrl = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
-            . '/stripe/portal.php?uid=' . urlencode($lineUserId);
-        line_reply($replyToken, implode("\n", [
-            '有料プランの確認・解約はこちらから行えます👇',
-            $portalUrl,
-        ]));
+        if ($tokenRepo === null || $ownerId === null) {
+            line_reply($replyToken, '現在、課金ページの生成に失敗しました。時間をおいて再度お試しください。');
+        } else {
+            $portalToken = $tokenRepo->createToken($ownerId, 'portal', new DateTimeImmutable('+10 minutes'));
+            $portalUrl   = rtrim((string) ($config['app']['base_url'] ?? ''), '/')
+                . '/stripe/portal.php?token=' . urlencode($portalToken);
+            line_reply($replyToken, implode("\n", [
+                '有料プランの確認・解約はこちらから行えます👇',
+                $portalUrl,
+            ]));
+        }
         continue;
     }
 

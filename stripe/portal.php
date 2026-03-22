@@ -25,33 +25,40 @@ if ($secretKey === '') {
 
 /*
 |--------------------------------------------------------------------------
-| Identify user from uid query param
+| Identify user via one-time token
 |--------------------------------------------------------------------------
 */
-$uid = trim((string) ($_GET['uid'] ?? ''));
-if ($uid === '') {
+$token = trim((string) ($_GET['token'] ?? ''));
+if ($token === '') {
     http_response_code(400);
-    exit('Missing uid');
+    exit('LINEからアクセスしてください');
 }
 
 try {
-    $db       = new \FujiraManager\Storage\Database($config['db']);
-    $userRepo = new \FujiraManager\Storage\UserRepository($db);
+    $db        = new \FujiraManager\Storage\Database($config['db']);
+    $userRepo  = new \FujiraManager\Storage\UserRepository($db);
+    $tokenRepo = new \FujiraManager\Storage\TokenRepository($db);
 } catch (\Throwable $e) {
     http_response_code(500);
     exit('DB init failed');
 }
 
-$user = $userRepo->findByLineUserId($uid);
+$userId = $tokenRepo->consumeToken($token, 'portal');
+if ($userId === null) {
+    http_response_code(400);
+    exit('リンクの有効期限が切れました。LINEからもう一度お試しください。');
+}
+
+$user = $userRepo->findById($userId);
 if ($user === null) {
     http_response_code(400);
-    exit('User not found');
+    exit('ユーザー情報が見つかりません。');
 }
 
 $customerId = trim((string) ($user['stripe_customer_id'] ?? ''));
 if ($customerId === '') {
     http_response_code(400);
-    exit('有料プランへの登録が確認できませんでした。先にご登録ください。');
+    exit('有料プランの情報が見つかりません。');
 }
 
 /*

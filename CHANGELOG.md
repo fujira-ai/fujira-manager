@@ -4,6 +4,23 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.5-dev - 2026-03-23
+
+### Added
+- 課金・解約導線用のワンタイムトークン管理テーブル `user_tokens` を追加
+- TokenRepository を追加し、purpose付き短命トークンを発行・消費できるよう改善
+
+### Changed
+- `upgrade.php` を token 方式に変更し、Stripe Checkout Session を直接生成するよう改善
+- `stripe/portal.php` を token 方式に変更
+- LINEの課金導線・解約導線で LINE user_id をURLに出さないよう改善
+
+### Security
+- LINE user_id をURLに含めない設計へ全面移行
+- トークンは10分で失効し、使用後は即削除
+
+---
+
 ## v1.3.4-dev - 2026-03-23
 
 ### Added
