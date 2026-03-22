@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.3-dev - 2026-03-23
+
+### Fixed
+- 25件到達時の事前警告が動作しない不具合を修正
+  - UserRepository に updateWarnedLimit() メソッドが未実装だった問題を解消
+
+### Confirmed
+- 無料枠30件制限 → 課金導線 → Stripe決済 → 有料化の一連のフローが正常動作することを確認
+
+---
+
 ## v1.3.2-dev - 2026-03-23
 
 ### Changed
