@@ -3,6 +3,24 @@
 All notable changes to Fujira Manager will be documented in this file.
 
 ---
+
+## v1.3.7-dev - 2026-03-23
+
+### Added
+- logs 配下の .log を日次でバックアップする `cron/log_backup.php` を追加
+- バックアップログを gzip 圧縮して `logs/backup/YYYY-MM-DD/` に保存するよう改善
+- 30日を超えた古いバックアップを自動削除する世代管理を追加
+
+### Improved
+- 障害調査や課金トラブル時のためにログ保全運用を強化
+- `logs/cron_log_backup.log` に実行結果を記録するよう改善
+
+### Fixed
+- `cron/log_backup.php` で `cron_log_backup.log` 自身をバックアップ対象から除外
+- 実行中ログを読んで圧縮・truncate してしまう分かりにくい挙動を防止
+
+---
+
 ## v1.3.6-dev - 2026-03-23
 
 ### Fixed
@@ -13,7 +31,7 @@ All notable changes to Fujira Manager will be documented in this file.
 ### Improved
 - 解約後も `subscription_expires_at` まで利用可能な仕様を安定化
 - Stripe Webhook の期限管理ロジックを堅牢化
-
+本
 ### Confirmed
 - サブスク登録 → 解約 → 期限まで利用 → 無料枠制限再開 の一連のフローが正常動作することを確認
 
