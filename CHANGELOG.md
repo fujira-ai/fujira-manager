@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.13-dev - 2026-03-23
+
+### Added
+- 直前の open タスク1件を取得する `findLatestOpenTaskByOwnerId()` を追加
+
+### Fixed
+- 直前タスク修正コマンドで未定義メソッド呼び出しによりエラーになる問題を修正
+- 本番反映漏れにより amendment 処理が失敗する状態を解消
+
+---
+
 ## v1.3.12-dev - 2026-03-23
 
 ### Fixed

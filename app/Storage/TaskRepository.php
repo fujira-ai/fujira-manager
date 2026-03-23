@@ -201,4 +201,41 @@ final class TaskRepository
         ]);
         return (int) $stmt->fetchColumn();
     }
+
+    public function findLatestOpenTaskByOwnerId(int $ownerId): ?array
+    {
+        $sql  = 'SELECT id, title, due_date, due_time FROM tasks
+                 WHERE owner_id = :owner_id AND status = :status
+                 ORDER BY id DESC LIMIT 1';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute(['owner_id' => $ownerId, 'status' => 'open']);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    /**
+     * Update due_date and/or due_time for a specific open task.
+     * Only keys present in $updates are changed.
+     * Accepted keys: due_date, due_time
+     */
+    public function updateTaskSchedule(int $taskId, int $ownerId, array $updates): bool
+    {
+        $allowed = ['due_date', 'due_time'];
+        $sets    = [];
+        $params  = ['id' => $taskId, 'owner_id' => $ownerId, 'status' => 'open'];
+        foreach ($allowed as $col) {
+            if (array_key_exists($col, $updates)) {
+                $sets[]       = "{$col} = :{$col}";
+                $params[$col] = $updates[$col];
+            }
+        }
+        if (empty($sets)) {
+            return false;
+        }
+        $sql  = 'UPDATE tasks SET ' . implode(', ', $sets) . ', updated_at = NOW()
+                 WHERE id = :id AND owner_id = :owner_id AND status = :status';
+        $stmt = $this->db->pdo()->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->rowCount() > 0;
+    }
 }
