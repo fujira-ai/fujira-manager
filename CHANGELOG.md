@@ -4,6 +4,14 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.22-dev - 2026-03-23
+
+### Fixed
+- 文末語尾除去で「かな」「な」まで削ってしまい、日本語の意味を壊す問題を修正
+- 対象語尾を「だよ」「だね」「ね」「よ」のみに限定し、安全性を改善
+
+---
+
 ## v1.3.21-dev - 2026-03-23
 
 ### Fixed
