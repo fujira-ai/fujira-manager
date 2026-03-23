@@ -4,6 +4,14 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.18-dev - 2026-03-23
+
+### Fixed
+- 改行を含むタスク入力を空白に正規化し、改行込みのまま1タスクとして保存される問題を修正
+- `\r\n` / `\r` / `\n` を半角スペースに置換し、既存の空白圧縮処理と組み合わせて自然な1文として扱えるよう改善
+
+---
+
 ## v1.3.17-dev - 2026-03-23
 
 ### Changed

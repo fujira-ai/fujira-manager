@@ -702,6 +702,7 @@ foreach ($data['events'] as $event) {
 
     $replyToken = $event['replyToken'] ?? '';
     $text = trim((string) ($event['message']['text'] ?? ''));
+    $text = preg_replace('/\r\n|\r|\n/u', ' ', $text);
     $text = trim(preg_replace('/[ 　]+/u', ' ', $text));
     $lineUserId = (string) ($event['source']['userId'] ?? '');
 
