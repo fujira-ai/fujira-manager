@@ -28,23 +28,75 @@ function cron_log(string $message, array $context = []): void
 
 /*
 |--------------------------------------------------------------------------
-| Tomorrow message builder
+| Evening message builder
 |--------------------------------------------------------------------------
 */
-function build_tomorrow_message(array $tomorrowTasks): string
+function build_tomorrow_message(array $todayTasks, array $tomorrowTasks): string
 {
-    $sections = ['明日の予定があります。', ''];
-    foreach ($tomorrowTasks as $t) {
-        if (!empty($t['due_time'])) {
-            $sections[] = '・' . $t['title'] . '（明日 ' . $t['due_time'] . '）';
-        } else {
-            $sections[] = '・' . $t['title'] . '（明日）';
+    $lines = [];
+
+    // Section 1: today's incomplete tasks
+    if (!empty($todayTasks)) {
+        $withTime = [];
+        $noTime   = [];
+        foreach ($todayTasks as $t) {
+            if (!empty($t['due_time'])) {
+                $withTime[] = $t;
+            } else {
+                $noTime[] = $t;
+            }
+        }
+        $sorted = array_merge($withTime, $noTime);
+        $total  = count($sorted);
+
+        $lines[] = '今日まだ終わっていないタスクがあります📌';
+        $lines[] = '';
+        foreach (array_slice($sorted, 0, 3) as $t) {
+            $label   = (!empty($t['due_time'])) ? $t['due_time'] . ' ' . $t['title'] : $t['title'];
+            $lines[] = '・' . $label;
+        }
+        if ($total > 3) {
+            $lines[] = '';
+            $lines[] = '他にも未完了タスクがあります。';
         }
     }
-    $sections[] = '';
-    $sections[] = '必要な準備があれば今日のうちにどうぞ。';
 
-    return implode("\n", $sections);
+    // Section 2: tomorrow's tasks
+    if (!empty($tomorrowTasks)) {
+        if (!empty($lines)) {
+            $lines[] = '';
+        }
+        $withTime = [];
+        $noTime   = [];
+        foreach ($tomorrowTasks as $t) {
+            if (!empty($t['due_time'])) {
+                $withTime[] = $t;
+            } else {
+                $noTime[] = $t;
+            }
+        }
+        $sorted = array_merge($withTime, $noTime);
+        $total  = count($sorted);
+
+        $lines[] = '明日の予定はこちらです🌙';
+        $lines[] = '';
+        foreach (array_slice($sorted, 0, 3) as $t) {
+            $label   = (!empty($t['due_time'])) ? $t['due_time'] . ' ' . $t['title'] : $t['title'];
+            $lines[] = '・' . $label;
+        }
+        if ($total > 3) {
+            $lines[] = '';
+            $lines[] = '他にも明日の予定があります。';
+        }
+    }
+
+    // Footer
+    if (!empty($todayTasks)) {
+        $lines[] = '';
+        $lines[] = '「今日」で未完了タスクを確認できます。';
+    }
+
+    return implode("\n", $lines);
 }
 
 /*
@@ -67,7 +119,9 @@ try {
 $users = $userRepo->getAllBriefEnabledUsers();
 cron_log('tomorrow reminder user count', ['count' => count($users)]);
 
-$d = new DateTime('now', new DateTimeZone('Asia/Tokyo'));
+$tz       = new DateTimeZone('Asia/Tokyo');
+$today    = (new DateTime('now', $tz))->format('Y-m-d');
+$d        = new DateTime('now', $tz);
 $d->modify('+1 day');
 $tomorrow = $d->format('Y-m-d');
 
@@ -76,14 +130,15 @@ foreach ($users as $user) {
     $lineUserId = (string) $user['line_user_id'];
 
     try {
+        $todayTasks    = $taskRepo->getTodayTasksByOwner($ownerId, $today);
         $tomorrowTasks = $taskRepo->getTomorrowTasksByOwner($ownerId, $tomorrow);
 
-        if (empty($tomorrowTasks)) {
+        if (empty($todayTasks) && empty($tomorrowTasks)) {
             cron_log('tomorrow reminder skipped (no tasks)', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
             continue;
         }
 
-        $message = build_tomorrow_message($tomorrowTasks);
+        $message = build_tomorrow_message($todayTasks, $tomorrowTasks);
         $line->pushMessage($lineUserId, $message);
         cron_log('tomorrow reminder sent', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
     } catch (\Throwable $e) {
