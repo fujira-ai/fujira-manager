@@ -621,6 +621,9 @@ foreach ($data['events'] as $event) {
         }
     }
 
+    // Tutorial step: 3+ = complete (normal user), 0-2 = in-progress
+    $tutorialStep = ($user !== null) ? (int) ($user['tutorial_step'] ?? 3) : 0;
+
     // History command
     if ($text === '履歴' || $text === '/history') {
         $replyText = '完了済みタスクはありません';
@@ -1203,6 +1206,15 @@ foreach ($data['events'] as $event) {
                 $replyText = '今日のタスク取得に失敗しました';
             }
         }
+        // Tutorial hint on 今日 command (STEP 0 → 1)
+        if ($tutorialStep === 0 && $ownerId !== null && $userRepo !== null) {
+            try {
+                $userRepo->advanceTutorialStep($ownerId);
+                $replyText .= "\n\n---\nタスクを送ると登録できます（例：「14時 歯医者」）";
+            } catch (\Throwable $e) {
+                webhook_log('tutorial advance failed', ['error' => $e->getMessage()]);
+            }
+        }
         if ($replyToken !== '') {
             line_reply($replyToken, $replyText, $quickReply);
         }
@@ -1778,6 +1790,17 @@ foreach ($data['events'] as $event) {
                 }
                 if ($tag !== null) {
                     $msg .= "\nタグ：#" . $tag;
+                }
+                // Tutorial hint on task creation (STEP 1 → 2, STEP 2 → 3)
+                if (in_array($tutorialStep, [0, 1, 2], true) && $ownerId !== null && $userRepo !== null) {
+                    try {
+                        $userRepo->advanceTutorialStep($ownerId);
+                        $msg .= ($tutorialStep <= 1)
+                            ? "\n\n---\n「今日」と送ると一覧が確認できます。"
+                            : "\n\n---\n「今のは明日」などで日時を修正できます。";
+                    } catch (\Throwable $e) {
+                        webhook_log('tutorial advance failed', ['error' => $e->getMessage()]);
+                    }
                 }
                 line_reply($replyToken, $msg);
             }
