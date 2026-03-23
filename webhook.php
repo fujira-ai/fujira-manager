@@ -1738,18 +1738,19 @@ foreach ($data['events'] as $event) {
 
     // Direct amendment: "今のは..." / "さっきのは..." — modify the latest open task's schedule
     if (preg_match('/^(?:今のは|さっきのは)(.*)/u', $text, $am) && $ownerId !== null && $taskRepo !== null) {
-        $suffix   = trim($am[1]);
+        // Strip optional trailing noise ("です", "に変更" etc.) before keyword parsing
+        $suffix   = trim(preg_replace('/(?:です|に変更|にして|してください)[\s　]*$/u', '', trim($am[1])));
         $amendTz  = new DateTimeZone('Asia/Tokyo');
         $amendDate = null;
         $amendTime = null;
 
-        // Parse date component
-        if (preg_match('/^今日/u', $suffix)) {
+        // Parse date component — keyword-based (not anchored to start of suffix)
+        if (preg_match('/今日/u', $suffix)) {
             $amendDate = (new DateTime('now', $amendTz))->format('Y-m-d');
-            $suffix    = trim(preg_replace('/^今日/u', '', $suffix, 1));
-        } elseif (preg_match('/^明日/u', $suffix)) {
+            $suffix    = trim(preg_replace('/今日/u', '', $suffix, 1));
+        } elseif (preg_match('/明日/u', $suffix)) {
             $amendDate = (new DateTime('tomorrow', $amendTz))->format('Y-m-d');
-            $suffix    = trim(preg_replace('/^明日/u', '', $suffix, 1));
+            $suffix    = trim(preg_replace('/明日/u', '', $suffix, 1));
         }
 
         // Parse time component (specific → general)
@@ -1765,7 +1766,7 @@ foreach ($data['events'] as $event) {
 
         if ($amendDate === null && $amendTime === null) {
             if ($replyToken !== '') {
-                line_reply($replyToken, '修正内容を認識できませんでした。（例：今のは今日10時です）');
+                line_reply($replyToken, '修正内容を認識できませんでした。（例：今のは今日10時）');
             }
             continue;
         }
