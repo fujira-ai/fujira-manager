@@ -1159,16 +1159,15 @@ foreach ($data['events'] as $event) {
                         $suffix = '（' . $done['due_time'] . '）';
                     }
 
-                    $remaining      = $taskRepo->countOpenTasksByOwner($ownerId);
-                    $todayRemaining = $taskRepo->countTodayOpenTasksByOwner($ownerId, $doneToday);
-                    if ($remaining === 0) {
-                        $remainText = '今のタスクは0件です。';
-                    } elseif ($todayRemaining === 0) {
-                        $remainText = '今日のタスクは完了です。';
+                    $nextTasks = $taskRepo->getTodayTasksByOwner($ownerId, $doneToday);
+                    if (empty($nextTasks)) {
+                        $nextText = '今日のタスクはすべて完了です！🎉';
                     } else {
-                        $remainText = "今日の残りは{$todayRemaining}件です。";
+                        $next      = $nextTasks[0];
+                        $nextLabel = (!empty($next['due_time'])) ? $next['due_time'] . ' ' . $next['title'] : $next['title'];
+                        $nextText  = "次はこれです👇\n・" . $nextLabel . "\n\n「今日」で一覧を確認できます。";
                     }
-                    $replyText = "ナイスです。\n・" . $done['title'] . $suffix . " を完了しました。\n\n" . $remainText;
+                    $replyText = "ナイスです。\n・" . $done['title'] . $suffix . " を完了しました。\n\n" . $nextText;
                     webhook_log('task completed', ['owner_id' => $ownerId, 'task_id' => $taskId]);
                 }
             } catch (\Throwable $e) {
