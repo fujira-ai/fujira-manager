@@ -135,11 +135,11 @@ foreach ($users as $user) {
 
             // Send alert
             $message = implode("\n", [
-                'まもなく予定です。',
+                'まもなく予定です⏰',
                 '',
-                '・' . $task['title'] . '（' . $dueTime . '）',
+                $dueTime . ' ' . $task['title'],
                 '',
-                '必要があれば今のうちに準備してください。',
+                '終わったら「今日」で一覧を確認して、完了できます。',
             ]);
 
             cron_log('pre alert push attempt', [
