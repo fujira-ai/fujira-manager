@@ -31,64 +31,40 @@ function cron_log(string $message, array $context = []): void
 | Midday message builder
 |--------------------------------------------------------------------------
 */
-function build_midday_message(array $todayTasks, array $tomorrowTasks, array $noneTasks): string
+function build_midday_message(array $todayTasks, array $noneTasks): string
 {
-    // Group classification — within each group SQL already sorted (due_time ASC)
-    $todayWithTime    = [];
-    $todayNoTime      = [];
-    $tomorrowWithTime = [];
-    $tomorrowNoTime   = [];
-
+    // Priority: today with time → today no time → no due date (lower priority)
+    $withTime = [];
+    $noTime   = [];
     foreach ($todayTasks as $t) {
         if (!empty($t['due_time'])) {
-            $todayWithTime[] = $t;
+            $withTime[] = $t;
         } else {
-            $todayNoTime[] = $t;
+            $noTime[] = $t;
         }
     }
-    foreach ($tomorrowTasks as $t) {
-        if (!empty($t['due_time'])) {
-            $tomorrowWithTime[] = $t;
-        } else {
-            $tomorrowNoTime[] = $t;
-        }
-    }
-
-    // Priority order: today_with_time → today_no_time → tomorrow_with_time → tomorrow_no_time → no_due
-    $pending = array_merge($todayWithTime, $todayNoTime, $tomorrowWithTime, $tomorrowNoTime, $noneTasks);
+    $pending = array_merge($withTime, $noTime, $noneTasks);
     $total   = count($pending);
 
-    $sections = [
-        'お昼の確認です。',
-        '',
-        '未完了のタスクが' . $total . '件あります。',
+    $lines = [
+        'まだ終わっていないタスクがあります📌',
         '',
     ];
 
-    if ($total <= 3) {
-        foreach ($pending as $t) {
-            $label = (!empty($t['due_time'])) ? $t['due_time'] . ' ' . $t['title'] : $t['title'];
-            $sections[] = '・' . $label;
-        }
-    } else {
-        $top       = array_slice($pending, 0, 3);
-        $remaining = $total - 3;
-        $sections[] = '優先タスク：';
-        foreach ($top as $t) {
-            $label = (!empty($t['due_time'])) ? $t['due_time'] . ' ' . $t['title'] : $t['title'];
-            $sections[] = '・' . $label;
-        }
-        $sections[] = '';
-        $sections[] = '残り' . $remaining . '件';
-    }
-    $sections[] = '';
-    $sections[] = 'この中から1つ進めましょう。';
-    if (!empty($todayWithTime) || !empty($todayNoTime)) {
-        $sections[] = '';
-        $sections[] = '👉 1つ終わったら「完了1」で消せます';
+    foreach (array_slice($pending, 0, 3) as $t) {
+        $label   = (!empty($t['due_time'])) ? $t['due_time'] . ' ' . $t['title'] : $t['title'];
+        $lines[] = '・' . $label;
     }
 
-    return implode("\n", $sections);
+    if ($total > 3) {
+        $lines[] = '';
+        $lines[] = '他にも未完了タスクがあります。';
+    }
+
+    $lines[] = '';
+    $lines[] = '「今日」で一覧を確認できます。';
+
+    return implode("\n", $lines);
 }
 
 /*
@@ -111,27 +87,23 @@ try {
 $users = $userRepo->getAllBriefEnabledUsers();
 cron_log('midday brief user count', ['count' => count($users)]);
 
-$tz       = new DateTimeZone('Asia/Tokyo');
-$today    = (new DateTime('now', $tz))->format('Y-m-d');
-$d        = new DateTime('now', $tz);
-$d->modify('+1 day');
-$tomorrow = $d->format('Y-m-d');
+$tz    = new DateTimeZone('Asia/Tokyo');
+$today = (new DateTime('now', $tz))->format('Y-m-d');
 
 foreach ($users as $user) {
     $ownerId    = (int) $user['id'];
     $lineUserId = (string) $user['line_user_id'];
 
     try {
-        $todayTasks    = $taskRepo->getTodayTasksByOwner($ownerId, $today);
-        $tomorrowTasks = $taskRepo->getTomorrowTasksByOwner($ownerId, $tomorrow);
-        $noneTasks     = $taskRepo->getNoDueDateTasksByOwner($ownerId);
+        $todayTasks = $taskRepo->getTodayTasksByOwner($ownerId, $today);
+        $noneTasks  = $taskRepo->getNoDueDateTasksByOwner($ownerId);
 
-        if (empty($todayTasks) && empty($tomorrowTasks) && empty($noneTasks)) {
-            cron_log('midday brief skipped (no tasks)', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
+        if (empty($todayTasks)) {
+            cron_log('midday brief skipped (no today tasks)', ['owner_id' => $ownerId, 'line_user_id' => $lineUserId]);
             continue;
         }
 
-        $message    = build_midday_message($todayTasks, $tomorrowTasks, $noneTasks);
+        $message    = build_midday_message($todayTasks, $noneTasks);
         $quickReply = null;
         if (!empty($todayTasks)) {
             $qrItems   = [];
