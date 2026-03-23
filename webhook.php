@@ -1501,6 +1501,17 @@ foreach ($data['events'] as $event) {
             $saveTitle = '';
         }
 
+        // Supplement due_date with today when only time was parsed (no explicit date).
+        // e.g. "9時に日本リアライズ" / "日本リアライズ 9時" / "19:30 会食" / "14時 歯医者"
+        // Do not补完 if text contains explicit future-date references that the date parser
+        // does not cover (明後日 / 来週); 明日/今日/M月D日/M/D already set $dueDate above.
+        if ($dueDate === null && $dueTime !== null && $saveTitle !== ''
+            && !preg_match('/明後日|来週/u', $text)
+        ) {
+            $dueDate     = (new DateTime('now', $tz))->format('Y-m-d');
+            $datePattern = 'today_from_time';
+        }
+
         // Pre-save diagnostic log
         webhook_log('task parse result', [
             'raw_text'     => $text,
