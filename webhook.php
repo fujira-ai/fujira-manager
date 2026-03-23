@@ -972,6 +972,13 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
+    // Normalize full-width digits and full-width space for 完了/削除 commands
+    $normText = strtr($text, [
+        '０' => '0', '１' => '1', '２' => '2', '３' => '3', '４' => '4',
+        '５' => '5', '６' => '6', '７' => '7', '８' => '8', '９' => '9',
+        '　' => ' ',
+    ]);
+
     // Task complete command
     if ($text === '完了') {
         if ($replyToken !== '') {
@@ -980,7 +987,7 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
-    if (preg_match('/^(?:完了|\/done)\s*(\d+)$/u', $text, $matches)) {
+    if (preg_match('/^(?:完了|\/done)\s*(\d+)$/u', $normText, $matches)) {
         $num    = (int) $matches[1];
         $taskId = $num;
 
@@ -1073,7 +1080,7 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
-    if (preg_match('/^(?:削除|\/delete|\/del)\s+(\d+)$/u', $text, $matches)) {
+    if (preg_match('/^(?:削除|\/delete|\/del)\s*(\d+)$/u', $normText, $matches)) {
         $num    = (int) $matches[1];
         $taskId = $num;
 

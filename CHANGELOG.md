@@ -4,6 +4,15 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.10-dev - 2026-03-23
+
+### Changed
+- 「完了」「削除」コマンドで、全角数字の番号入力に対応
+- 「完了3」「削除2」のようにスペースなしでも受け付けるよう改善
+- 全角スペースを含む入力でも処理できるよう操作性を改善
+
+---
+
 ## v1.3.9-dev - 2026-03-23
 
 ### Added
