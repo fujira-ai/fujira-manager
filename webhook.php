@@ -244,6 +244,23 @@ function parse_time_to_minutes(string $time): ?int
     return null;
 }
 
+function normalizeTime(string $raw): string
+{
+    if (preg_match('/^(\d{1,2}):(\d{2})$/', $raw, $m)) {
+        return sprintf('%02d:%02d', (int) $m[1], (int) $m[2]);
+    }
+    if (preg_match('/^(\d{1,2})時$/u', $raw, $m)) {
+        return sprintf('%02d:00', (int) $m[1]);
+    }
+    if (preg_match('/^(\d{1,2})時半$/u', $raw, $m)) {
+        return sprintf('%02d:30', (int) $m[1]);
+    }
+    if (preg_match('/^(\d{1,2})時(\d{1,2})分$/u', $raw, $m)) {
+        return sprintf('%02d:%02d', (int) $m[1], (int) $m[2]);
+    }
+    return $raw;
+}
+
 /*
 |--------------------------------------------------------------------------
 | Task list page renderer
@@ -1369,7 +1386,8 @@ foreach ($data['events'] as $event) {
         || $text === 'やめる'
         || $text === '解約'
         || $text === 'プラン'
-        || $text === '課金');
+        || $text === '課金'
+        || preg_match('/^(?:今のは|さっきのは)/u', $text));
 
     webhook_log('task attempt', ['owner_id' => $ownerId, 'text' => $text, 'is_command' => $isCommand]);
 
@@ -1707,6 +1725,75 @@ foreach ($data['events'] as $event) {
             }
         } catch (\Throwable $e) {
             webhook_log('task create failed', ['error' => $e->getMessage()]);
+        }
+        continue;
+    }
+
+    // Direct amendment: "今のは..." / "さっきのは..." — modify the latest open task's schedule
+    if (preg_match('/^(?:今のは|さっきのは)(.*)/u', $text, $am) && $ownerId !== null && $taskRepo !== null) {
+        $suffix   = trim($am[1]);
+        $amendTz  = new DateTimeZone('Asia/Tokyo');
+        $amendDate = null;
+        $amendTime = null;
+
+        // Parse date component
+        if (preg_match('/^今日/u', $suffix)) {
+            $amendDate = (new DateTime('now', $amendTz))->format('Y-m-d');
+            $suffix    = trim(preg_replace('/^今日/u', '', $suffix, 1));
+        } elseif (preg_match('/^明日/u', $suffix)) {
+            $amendDate = (new DateTime('tomorrow', $amendTz))->format('Y-m-d');
+            $suffix    = trim(preg_replace('/^明日/u', '', $suffix, 1));
+        }
+
+        // Parse time component (specific → general)
+        if (preg_match('/(\d{1,2}:\d{2})/u', $suffix, $tm)) {
+            $amendTime = $tm[1];
+        } elseif (preg_match('/(\d{1,2}時\d{1,2}分)/u', $suffix, $tm)) {
+            $amendTime = $tm[1];
+        } elseif (preg_match('/(\d{1,2}時半)/u', $suffix, $tm)) {
+            $amendTime = $tm[1];
+        } elseif (preg_match('/(\d{1,2}時)/u', $suffix, $tm)) {
+            $amendTime = $tm[1];
+        }
+
+        if ($amendDate === null && $amendTime === null) {
+            if ($replyToken !== '') {
+                line_reply($replyToken, '修正内容を認識できませんでした。（例：今のは今日10時です）');
+            }
+            continue;
+        }
+
+        $latestTask = $taskRepo->findLatestOpenTaskByOwnerId($ownerId);
+        if ($latestTask === null) {
+            if ($replyToken !== '') {
+                line_reply($replyToken, '修正できる直前のタスクが見つかりませんでした。');
+            }
+            continue;
+        }
+
+        $updates = [];
+        $labels  = [];
+        if ($amendDate !== null) {
+            $updates['due_date'] = $amendDate;
+            $todayStr            = (new DateTime('now', $amendTz))->format('Y-m-d');
+            $labels[]            = ($amendDate === $todayStr) ? '今日' : '明日';
+        }
+        if ($amendTime !== null) {
+            $normalized          = normalizeTime($amendTime);
+            $updates['due_time'] = $normalized;
+            $labels[]            = $normalized;
+        }
+
+        $taskRepo->updateTaskSchedule((int) $latestTask['id'], $ownerId, $updates);
+        webhook_log('task amended', [
+            'owner_id' => $ownerId,
+            'task_id'  => $latestTask['id'],
+            'title'    => $latestTask['title'],
+            'updates'  => $updates,
+        ]);
+
+        if ($replyToken !== '') {
+            line_reply($replyToken, '直前のタスクを「' . implode(' ', $labels) . '」に修正しました。');
         }
         continue;
     }

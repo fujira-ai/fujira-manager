@@ -4,6 +4,17 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.9-dev - 2026-03-23
+
+### Added
+- 「今のは」「さっきのは」で直近タスクの日時を修正できる機能を追加
+
+### Changed
+- 時刻入力を HH:MM 形式に正規化して保存するよう改善
+- 正規化できない時刻表現は保存しないよう安全性を向上
+
+---
+
 ## v1.3.8-dev - 2026-03-23
 
 ### Changed
