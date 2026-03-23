@@ -704,6 +704,7 @@ foreach ($data['events'] as $event) {
     $text = trim((string) ($event['message']['text'] ?? ''));
     $text = preg_replace('/\r\n|\r|\n/u', ' ', $text);
     $text = trim(preg_replace('/[ 　]+/u', ' ', $text));
+    $text = preg_replace('/^(?:今から|とりあえず|まずは|今日やること[\s　]+|やること[\s　]+)/u', '', $text);
     $lineUserId = (string) ($event['source']['userId'] ?? '');
 
     webhook_log('Text message received', [
