@@ -261,6 +261,112 @@ function normalizeTime(string $raw): string
     return $raw;
 }
 
+/**
+ * Heuristically decide whether a message is a task to register.
+ * Operates on the parsed title ($saveTitle) after date/time stripping.
+ * Conservative default = true; only rejects clearly conversational text.
+ */
+function isLikelyTask(string $text): bool
+{
+    // Reject: short conversational phrases / acknowledgements
+    // Normalize comparison text only — $text itself is NOT modified
+    static $conversationalPhrases = [
+        'ありがとう', 'ありがとうございます', 'ありがとうございました', 'ありがとうです',
+        '了解', '了解です', '了解しました',
+        'ok',
+        'はい', 'いいえ',
+        'なるほど', 'なるほどです',
+        'たぶん', 'おそらく',
+        'あとで', '後で',
+        '無理', '無理です',
+        '大丈夫', '大丈夫です',
+        'お願い', 'おねがい', 'お願いします', 'おねがいします',
+        'お願いいたします', 'おねがいいたします',
+        'よろしく', 'よろしくお願いします',
+        'すみません', 'すみませんでした', 'ごめんなさい', 'ごめん',
+        'わかった', 'わかりました', 'わかってる',
+    ];
+    $normalized = mb_strtolower($text, 'UTF-8');                        // case-normalize
+    $normalized = preg_replace('/[\s　]+/u', '', $normalized);          // remove all spaces
+    $normalized = preg_replace('/[\p{P}\p{S}]+$/u', '', $normalized);  // strip trailing punct/symbols/emoji
+    if (in_array($normalized, $conversationalPhrases, true)) {
+        return false;
+    }
+
+    // Reject: compound conversational text — contains a conversational key phrase
+    //         but has no task element (time / #tag / action verb)
+    if (preg_match('/ありがとう|了解|わかりました|わかった|よろしく|すみません|ごめん/u', $normalized)) {
+        $hasTaskElement = preg_match(
+            '/\d{1,2}時|\d{1,2}:\d{2}|#\S+|する|します|行く|行き|買う|確認|連絡|送る|作る|まとめ|提出|返信|予約|準備|検討|報告|相談|修正|更新|追加|対応|整理|申請|依頼|払う|振込|送付/u',
+            $normalized
+        );
+        if (!$hasTaskElement) {
+            return false;
+        }
+    }
+
+    // Reject: ends with conversational sentence-final particles
+    if (preg_match('/(?:ね|よ|なあ|かな|じゃん)$/u', $text)) {
+        return false;
+    }
+    // Reject: "です" ending without any action verb (meta-comment pattern)
+    if (preg_match('/です$/u', $text)
+        && !preg_match('/する|します|行く|行き|買う|確認|連絡|送る|作る|まとめ|提出|返信|予約|準備|検討|報告|相談|修正|更新|追加|対応|整理|申請|依頼|払う|振込|送付/u', $text)
+    ) {
+        return false;
+    }
+    // Reject: starts with referential or collective expressions
+    if (preg_match('/^(?:全部|全て|それ|これ|あれ|三つ|二つ|一つ|みんな|全員)/u', $text)) {
+        return false;
+    }
+    // Default: accept (conservative — prefer false negatives over false positives)
+    return true;
+}
+
+/**
+ * Returns a light conversational reply for acknowledgements/greetings, or null if not matched.
+ * Operates on saveTitle (date/time-stripped).
+ */
+function isConversation(string $text): ?string
+{
+    $n = mb_strtolower($text, 'UTF-8');
+    $n = preg_replace('/[\s　]+/u', '', $n);
+    $n = preg_replace('/[\p{P}\p{S}]+$/u', '', $n);
+
+    if (preg_match('/ありがとう/u', $n)) {
+        return 'どういたしまして！タスクがあれば送ってください。';
+    }
+    if (preg_match('/^(?:ok|了解|わかりました|わかった)/u', $n)) {
+        return '了解です！タスクがあれば登録しますよ。';
+    }
+    if (preg_match('/^(?:よろしく|おねがい|お願い)/u', $n)) {
+        return 'こちらこそよろしくお願いします！';
+    }
+    if (preg_match('/^(?:はい|うん)$/u', $n)) {
+        return 'タスクがあれば送ってください！';
+    }
+    if (preg_match('/^(?:いいえ|違う|ちがう)$/u', $n)) {
+        return 'わかりました！';
+    }
+    return null;
+}
+
+/**
+ * Returns guidance for unsupported bulk operations, or null if not matched.
+ */
+function isUnsupportedCommand(string $text): ?string
+{
+    if (preg_match('/全部削除|一括削除|全削除|全て削除|まとめて削除/u', $text)) {
+        return implode("\n", [
+            '一括削除には対応していません。',
+            '削除するタスク番号を指定してください。',
+            '',
+            '例：「削除 1」',
+        ]);
+    }
+    return null;
+}
+
 /*
 |--------------------------------------------------------------------------
 | Task list page renderer
@@ -1656,6 +1762,18 @@ foreach ($data['events'] as $event) {
             ]);
             if ($replyToken !== '') {
                 line_reply($replyToken, '内容を入力してください');
+            }
+            continue;
+        }
+
+        // Conversational text filter — reject messages that are not task-like
+        if (!isLikelyTask($saveTitle)) {
+            webhook_log('task skipped: not likely task', ['text' => $text, 'save_title' => $saveTitle]);
+            if ($replyToken !== '') {
+                $reply = isConversation($saveTitle)
+                    ?? isUnsupportedCommand($saveTitle)
+                    ?? 'タスクとして登録する内容を送ってください';
+                line_reply($replyToken, $reply);
             }
             continue;
         }

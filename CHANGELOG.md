@@ -4,6 +4,18 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.15-dev - 2026-03-23
+
+### Added
+- `isConversation()` を追加し、相槌や返答に対して軽い会話応答を返すよう改善
+- `isUnsupportedCommand()` を追加し、一括削除など未対応操作に対してガイドを返すよう改善
+
+### Changed
+- 非タスク入力時の返答を「会話返答 → 未対応操作案内 → 汎用誘導」の3段階に整理
+- 「ありがとう」「了解」「全部削除」などに対して、機械的な定型文ではなく入力内容に応じた返答を返すよう改善
+
+---
+
 ## v1.4.0-dev - 2026-03-23
 
 ### Fixed
