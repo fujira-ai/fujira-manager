@@ -369,6 +369,16 @@ function isUnsupportedCommand(string $text): ?string
 
 /*
 |--------------------------------------------------------------------------
+| "今のは今日" shortcut detector
+|--------------------------------------------------------------------------
+*/
+function isModifyToToday(string $text): bool
+{
+    return (bool) preg_match('/^(?:今のは今日|今のやつ今日|さっきの今日)(?:です)?$/u', trim($text));
+}
+
+/*
+|--------------------------------------------------------------------------
 | Task list page renderer
 |--------------------------------------------------------------------------
 */
@@ -1491,6 +1501,31 @@ foreach ($data['events'] as $event) {
         }
         if ($replyToken !== '') {
             line_reply($replyToken, $replyText);
+        }
+        continue;
+    }
+
+    // "今のは今日" / "今のやつ今日" / "さっきの今日" — set latest task due_date to today
+    if (isModifyToToday($text) && $ownerId !== null && $taskRepo !== null) {
+        try {
+            $latestTask = $taskRepo->findLatestOpenTaskByOwnerId($ownerId);
+            if ($latestTask === null) {
+                if ($replyToken !== '') {
+                    line_reply($replyToken, '更新できるタスクが見つかりませんでした。');
+                }
+                continue;
+            }
+            $todayDate = (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('Y-m-d');
+            $taskRepo->updateTaskSchedule((int) $latestTask['id'], $ownerId, ['due_date' => $todayDate]);
+            webhook_log('task modified to today', ['owner_id' => $ownerId, 'task_id' => $latestTask['id'], 'title' => $latestTask['title']]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, "更新しました：\n" . $latestTask['title'] . '（今日）');
+            }
+        } catch (\Throwable $e) {
+            webhook_log('modify to today failed', ['owner_id' => $ownerId, 'error' => $e->getMessage()]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, '修正処理中にエラーが発生しました。もう一度お試しください。');
+            }
         }
         continue;
     }

@@ -4,6 +4,15 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.23-dev - 2026-03-24
+
+### Fixed
+- 「今のは今日」ショートカットの判定を完全一致ベースに修正
+- `今のは今日 10時` や `今のは今日じゃない` などが誤ってショートカット処理される問題を防止
+- `trim()` を追加し、前後空白を含む入力でも安定して判定できるよう改善
+
+---
+
 ## v1.3.22-dev - 2026-03-23
 
 ### Fixed
