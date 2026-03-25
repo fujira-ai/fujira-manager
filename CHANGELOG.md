@@ -4,6 +4,33 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.25-dev - 2026-03-24
+
+### Added
+- OpenAI API を利用した曖昧入力の補助判定を導入
+- create_task 判定時に confidence >= 0.9 の場合のみ自動タスク登録する仕組みを追加
+
+### Changed
+- AI 呼び出し前に isConversation / isUnsupportedCommand を先行評価し、不要な API 呼び出しを削減
+- OpenAI への入力を $saveTitle から $text（原文）に変更し、文脈を保持
+- response_format を json_object から json_schema（Structured Outputs）に変更し、JSON構造の安定性を向上
+
+### Safety
+- AI 判定は既存ロジックの補助としてのみ使用し、低信頼・失敗時は従来処理へフォールバックする設計に変更
+
+---
+
+## v1.3.24-dev - 2026-03-24
+
+### Added
+- 「今のは明日」「今のやつ明日」「さっきの明日」で、直前の open タスクの日付を明日に更新するショートカットを追加
+
+### Changed
+- 「今のは今日」ショートカットと同様に、明日への日付変更も完全一致ベースで安全に扱えるよう改善
+- `due_time` は維持したまま `due_date` のみ更新するよう調整
+
+---
+
 ## v1.3.23-dev - 2026-03-24
 
 ### Fixed

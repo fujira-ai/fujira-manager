@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/app/bootstrap.php';
+require __DIR__ . '/lib/OpenAIClient.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -375,6 +376,11 @@ function isUnsupportedCommand(string $text): ?string
 function isModifyToToday(string $text): bool
 {
     return (bool) preg_match('/^(?:今のは今日|今のやつ今日|さっきの今日)(?:です)?$/u', trim($text));
+}
+
+function isModifyToTomorrow(string $text): bool
+{
+    return (bool) preg_match('/^(?:今のは明日|今のやつ明日|さっきの明日)(?:です)?$/u', trim($text));
 }
 
 /*
@@ -1530,6 +1536,32 @@ foreach ($data['events'] as $event) {
         continue;
     }
 
+    // "今のは明日" / "今のやつ明日" / "さっきの明日" — set latest task due_date to tomorrow
+    if (isModifyToTomorrow($text) && $ownerId !== null && $taskRepo !== null) {
+        try {
+            $latestTask = $taskRepo->findLatestOpenTaskByOwnerId($ownerId);
+            if ($latestTask === null) {
+                if ($replyToken !== '') {
+                    line_reply($replyToken, '更新できるタスクが見つかりませんでした。');
+                }
+                continue;
+            }
+            $tomorrowTz   = new DateTimeZone('Asia/Tokyo');
+            $tomorrowDate = (new DateTime('tomorrow', $tomorrowTz))->format('Y-m-d');
+            $taskRepo->updateTaskSchedule((int) $latestTask['id'], $ownerId, ['due_date' => $tomorrowDate]);
+            webhook_log('task modified to tomorrow', ['owner_id' => $ownerId, 'task_id' => $latestTask['id'], 'title' => $latestTask['title']]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, "更新しました：\n" . $latestTask['title'] . '（明日）');
+            }
+        } catch (\Throwable $e) {
+            webhook_log('modify to tomorrow failed', ['owner_id' => $ownerId, 'error' => $e->getMessage()]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, '修正処理中にエラーが発生しました。もう一度お試しください。');
+            }
+        }
+        continue;
+    }
+
     // Direct amendment: "今のは..." / "さっきのは..." — must be evaluated before $isCommand guard
     if (preg_match('/^(?:今のは|さっきのは)(.*)/u', $text, $am) && $ownerId !== null && $taskRepo !== null) {
         webhook_log('amendment branch entered', ['owner_id' => $ownerId, 'text' => $text]);
@@ -1807,14 +1839,59 @@ foreach ($data['events'] as $event) {
 
         // Conversational text filter — reject messages that are not task-like
         if (!isLikelyTask($saveTitle)) {
-            webhook_log('task skipped: not likely task', ['text' => $text, 'save_title' => $saveTitle]);
-            if ($replyToken !== '') {
-                $reply = isConversation($saveTitle)
-                    ?? isUnsupportedCommand($saveTitle)
-                    ?? 'タスクとして登録する内容を送ってください';
-                line_reply($replyToken, $reply);
+            // Step 1: known conversation / unsupported patterns — reply immediately, no AI needed
+            $knownReply = isConversation($saveTitle) ?? isUnsupportedCommand($saveTitle);
+            if ($knownReply !== null) {
+                webhook_log('task skipped: known non-task', ['save_title' => $saveTitle]);
+                if ($replyToken !== '') {
+                    line_reply($replyToken, $knownReply);
+                }
+                continue;
             }
-            continue;
+
+            // Step 2: ambiguous input — AI fallback with original text for full context
+            $aiResult = OpenAIClient::analyze($text);
+            webhook_log('ai_input',  ['text' => $text, 'ai_used' => ($aiResult !== null)]);
+            webhook_log('ai_output', ['result' => $aiResult]);
+
+            if (
+                $aiResult !== null &&
+                ($aiResult['action'] ?? '') === 'create_task' &&
+                (float) ($aiResult['confidence'] ?? 0.0) >= 0.9 &&
+                !empty($aiResult['normalized_title'])
+            ) {
+                // Use AI-normalized title
+                $saveTitle = (string) $aiResult['normalized_title'];
+
+                // Apply date hint only when rule-based parser found nothing
+                if ($dueDate === null) {
+                    $aiTz = new DateTimeZone('Asia/Tokyo');
+                    $hint = (string) ($aiResult['due_date_hint'] ?? '');
+                    if ($hint === 'today') {
+                        $dueDate = (new DateTime('now', $aiTz))->format('Y-m-d');
+                    } elseif ($hint === 'tomorrow') {
+                        $dueDate = (new DateTime('tomorrow', $aiTz))->format('Y-m-d');
+                    }
+                }
+
+                // Apply time hint only when rule-based parser found nothing
+                if ($dueTime === null && !empty($aiResult['due_time_hint'])) {
+                    $dueTime = (string) $aiResult['due_time_hint'];
+                }
+
+                webhook_log('ai task accepted', [
+                    'title'    => $saveTitle,
+                    'due_date' => $dueDate,
+                    'due_time' => $dueTime,
+                ]);
+                // Fall through to task save block below
+            } else {
+                webhook_log('task skipped: not likely task', ['text' => $text, 'save_title' => $saveTitle, 'ai_used' => ($aiResult !== null)]);
+                if ($replyToken !== '') {
+                    line_reply($replyToken, 'タスクとして登録する内容を送ってください');
+                }
+                continue;
+            }
         }
 
         // Free tier check: count current-month tasks and reject if over limit
