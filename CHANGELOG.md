@@ -4,6 +4,14 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.27-dev - 2026-03-25
+
+### Changed
+- `webhook.php` の OpenAI 補助判定における採用閾値を `confidence >= 0.9` から `>= 0.85` に緩和
+- `action === create_task` と `normalized_title` の条件は維持したまま、曖昧な自然文の取りこぼしを減らすよう調整
+
+---
+
 ## v1.3.26-dev - 2026-03-24
 
 ### Changed

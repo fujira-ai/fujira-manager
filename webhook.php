@@ -1857,7 +1857,7 @@ foreach ($data['events'] as $event) {
             if (
                 $aiResult !== null &&
                 ($aiResult['action'] ?? '') === 'create_task' &&
-                (float) ($aiResult['confidence'] ?? 0.0) >= 0.9 &&
+                (float) ($aiResult['confidence'] ?? 0.0) >= 0.85 &&
                 !empty($aiResult['normalized_title'])
             ) {
                 // Use AI-normalized title
