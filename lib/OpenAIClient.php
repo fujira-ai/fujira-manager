@@ -44,7 +44,8 @@ PROMPT;
      */
     public static function analyze(string $text): ?array
     {
-        $apiKey = (string) getenv('OPENAI_API_KEY');
+        $secret = require __DIR__ . '/../app/config.secret.php';
+        $apiKey = (string) ($secret['OPENAI_API_KEY'] ?? '');
         if ($apiKey === '') {
             return null;
         }

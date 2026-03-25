@@ -4,6 +4,14 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.26-dev - 2026-03-24
+
+### Changed
+- `lib/OpenAIClient.php` の `OPENAI_API_KEY` 取得元を環境変数 `getenv()` から `app/config.secret.php` に変更
+- 既存の null フォールバックを維持しつつ、現在の秘密情報管理方式に合わせて OpenAI API キーを読み込むよう調整
+
+---
+
 ## v1.3.25-dev - 2026-03-24
 
 ### Added
