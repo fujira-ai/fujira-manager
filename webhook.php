@@ -383,6 +383,26 @@ function isModifyToTomorrow(string $text): bool
     return (bool) preg_match('/^(?:今のは明日|今のやつ明日|さっきの明日)(?:です)?$/u', trim($text));
 }
 
+function isModifyToTime(string $text): bool
+{
+    return (bool) preg_match(
+        '/^(?:今のは|今のやつ|さっきの)(\d{1,2}時半|\d{1,2}時\d{1,2}分|\d{1,2}時|\d{1,2}:\d{2})(?:です)?$/u',
+        trim($text)
+    );
+}
+
+function extractShortcutTime(string $text): ?string
+{
+    if (preg_match(
+        '/^(?:今のは|今のやつ|さっきの)(\d{1,2}時半|\d{1,2}時\d{1,2}分|\d{1,2}時|\d{1,2}:\d{2})(?:です)?$/u',
+        trim($text),
+        $m
+    )) {
+        return $m[1];
+    }
+    return null;
+}
+
 /*
 |--------------------------------------------------------------------------
 | Task list page renderer
@@ -1555,6 +1575,45 @@ foreach ($data['events'] as $event) {
             }
         } catch (\Throwable $e) {
             webhook_log('modify to tomorrow failed', ['owner_id' => $ownerId, 'error' => $e->getMessage()]);
+            if ($replyToken !== '') {
+                line_reply($replyToken, '修正処理中にエラーが発生しました。もう一度お試しください。');
+            }
+        }
+        continue;
+    }
+
+    // "今のは10時" / "今のやつ19:30" / "さっきの15時半" — set latest task due_time only
+    if (isModifyToTime($text) && $ownerId !== null && $taskRepo !== null) {
+        try {
+            $latestTask = $taskRepo->findLatestOpenTaskByOwnerId($ownerId);
+            if ($latestTask === null) {
+                if ($replyToken !== '') {
+                    line_reply($replyToken, '更新できるタスクが見つかりませんでした。');
+                }
+                continue;
+            }
+            $normalizedTime = normalizeTime((string) extractShortcutTime($text));
+            $taskRepo->updateTaskSchedule((int) $latestTask['id'], $ownerId, ['due_time' => $normalizedTime]);
+            webhook_log('task modified time', ['owner_id' => $ownerId, 'task_id' => $latestTask['id'], 'title' => $latestTask['title'], 'due_time' => $normalizedTime]);
+
+            $timeTz      = new DateTimeZone('Asia/Tokyo');
+            $todayStr    = (new DateTime('now', $timeTz))->format('Y-m-d');
+            $tomorrowStr = (new DateTime('tomorrow', $timeTz))->format('Y-m-d');
+            $dateLabel   = '';
+            if (!empty($latestTask['due_date'])) {
+                if ($latestTask['due_date'] === $todayStr) {
+                    $dateLabel = '今日 ';
+                } elseif ($latestTask['due_date'] === $tomorrowStr) {
+                    $dateLabel = '明日 ';
+                } else {
+                    $dateLabel = $latestTask['due_date'] . ' ';
+                }
+            }
+            if ($replyToken !== '') {
+                line_reply($replyToken, "更新しました：\n" . $latestTask['title'] . '（' . $dateLabel . $normalizedTime . '）');
+            }
+        } catch (\Throwable $e) {
+            webhook_log('modify time failed', ['owner_id' => $ownerId, 'error' => $e->getMessage()]);
             if ($replyToken !== '') {
                 line_reply($replyToken, '修正処理中にエラーが発生しました。もう一度お試しください。');
             }

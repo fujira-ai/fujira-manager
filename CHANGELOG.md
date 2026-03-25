@@ -4,6 +4,18 @@ All notable changes to Fujira Manager will be documented in this file.
 
 ---
 
+## v1.3.28-dev - 2026-03-25
+
+### Added
+- 「今のは◯時」「今のやつ◯時」「さっきの◯時」で、直前の open タスクの時刻を更新するショートカットを追加
+- `H時` / `H時半` / `H時M分` / `HH:MM` 形式に対応
+
+### Changed
+- 既存の `normalizeTime()` を利用して、ショートカット入力でも `due_time` を `HH:MM` 形式で保存するよう改善
+- `due_date` がある場合は返信文に「今日」「明日」または日付を付けて、更新後の内容が分かりやすいよう調整
+
+---
+
 ## v1.3.27-dev - 2026-03-25
 
 ### Changed
